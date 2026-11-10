@@ -1,0 +1,4 @@
+<!-- WebGL build vyhazuje nepoužité části Unity. Fyziku (SphereCollider atd. z CreatePrimitive) chceme nechat. -->
+<linker>
+  <assembly fullname="UnityEngine.PhysicsModule" preserve="all"/>
+</linker>

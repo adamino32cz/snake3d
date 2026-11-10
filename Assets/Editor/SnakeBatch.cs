@@ -52,6 +52,8 @@ public static class SnakeBatch
         PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
         PlayerSettings.WebGL.decompressionFallback = false;
         PlayerSettings.WebGL.dataCaching = true;
+        PlayerSettings.defaultWebScreenWidth = 1280;
+        PlayerSettings.defaultWebScreenHeight = 720;
         PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
         var r = BuildPipeline.BuildPlayer(
             new[] { "Assets/Scenes/Snake3D.unity" },
