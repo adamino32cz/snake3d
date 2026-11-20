@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 using TMPro;
 
 // Řídí celou hru: úvodní obrazovku, skóre, čas, jídlo, konec hry a efekty.
@@ -44,9 +45,20 @@ public class GameManager : MonoBehaviour
     public TMP_Text pauseText;
     public TMP_Text highScoreText;        // tabulka TOP 10 na obrazovce Konec hry
 
+    [Header("Skiny")]
+    public GameObject skinsPanel;      // menu výběru vzhledu hada
+    public Button skinsButton;         // tlačítko SKINY na úvodní obrazovce
+    public Button skinsBackButton;
+    public Button skinsCodeButton;     // potvrzení tajného kódu
+    public TMP_Text skinsListText;     // seznam skinů (náhled + zámek)
+    public TMP_Text skinsHintText;
+    public TMP_Text skinsCodeText;     // zadaný tajný kód
+    public Transform skinsSlotRoot;    // sem se doplní klikací tlačítka skinů
+    public Image skinsPreview;         // barevný náhled vybraného skinu
+
     public float timeLimit = 120f;
 
-    enum State { Title, Playing, LevelUp, Paused, NameEntry, Over }
+    enum State { Title, Playing, LevelUp, Paused, NameEntry, Over, Skins }
     State state;
     int score, best;
     float timeLeft;
@@ -63,11 +75,16 @@ public class GameManager : MonoBehaviour
     public float comboWindow = 2.5f;   // kolik sekund mezi jídly, aby combo pokračovalo
     string endReason;
     MaterialPropertyBlock block;
+    string skinCode = "";              // text v poli tajného kódu
+    int skinCursor;                    // který skin je v menu označený
+    bool skinSlotsBuilt;
 
     public int Score => score;
     public int Level => level;
+    public LevelData CurrentLevel => Cur;  // aktuální nastavení levelu (čte ho FoodSpawner)
     public bool IsPlaying => state == State.Playing;
     public bool IsPaused => state == State.Paused;
+    public bool IsSkinMenuOpen => state == State.Skins;
 
     void Start()
     {
@@ -77,6 +94,10 @@ public class GameManager : MonoBehaviour
             if (t && t.font == null && font) t.font = font;
         // spuštění z příkazové řádky s "-startlevel 3" začne rovnou ve 3. levelu
         var args = CmdArgs.Get();
+        SkinCatalog.LoadFromPrefsAndArgs(args);
+        if (skinsButton) skinsButton.onClick.AddListener(OpenSkinMenu);
+        if (skinsBackButton) skinsBackButton.onClick.AddListener(CloseSkinMenu);
+        if (skinsCodeButton) skinsCodeButton.onClick.AddListener(() => { SubmitSkinCode(); });
         int a = System.Array.IndexOf(args, "-startlevel");
         if (a >= 0 && a + 1 < args.Length && int.TryParse(args[a + 1], out int lv)) { startLevel = lv - 1; PlayerPrefs.SetInt("Snake3D_Unlocked", Mathf.Max(PlayerPrefs.GetInt("Snake3D_Unlocked", 1), lv)); }
         if (System.Array.IndexOf(args, "-resetcampaign") >= 0) PlayerPrefs.SetInt("Snake3D_Unlocked", 1);   // test: zamkne zase všechno
@@ -168,6 +189,7 @@ public class GameManager : MonoBehaviour
             StartCoroutine(TutorialRoutine());
         }
         if (titlePanel) titlePanel.SetActive(false);
+        if (skinsPanel) skinsPanel.SetActive(false);
         if (pausePanel) pausePanel.SetActive(false);
         if (levelPanel) levelPanel.SetActive(false);
         state = State.Playing;
@@ -206,9 +228,11 @@ public class GameManager : MonoBehaviour
             if (Input.GetKeyDown(KeyCode.RightArrow)) chosen = (level + 1) % u;
             if (chosen >= u) chosen = level;
             if (chosen != level) SelectLevel(chosen);
+            if (Input.GetKeyDown(KeyCode.K)) { OpenSkinMenu(); return; }
             if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return)) BeginPlay();
             return;
         }
+        if (state == State.Skins) { SkinMenuInput(); return; }
         if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.P))
         {
             if (state == State.Playing) SetPaused(true);
@@ -625,6 +649,175 @@ public class GameManager : MonoBehaviour
             // posledních 10 sekund: text zčervená a bliká
             bool hurry = !NoTimeLimit && timeLeft < 10f && state == State.Playing;
             timeText.color = hurry ? Color.Lerp(Color.red, Color.white, Mathf.PingPong(Time.time * 3f, 1f)) : Color.white;
+        }
+    }
+
+
+    // ---------- SKINY ----------
+
+    // Otevře menu vzhledů (tlačítko SKINY nebo klávesa K na úvodní obrazovce).
+    public void OpenSkinMenu()
+    {
+        if (state != State.Title && state != State.Skins) return;
+        state = State.Skins;
+        skinCursor = SkinCatalog.IndexOf(SkinCatalog.Current().id);
+        skinCode = "";
+        if (titlePanel) titlePanel.SetActive(false);
+        if (skinsPanel) skinsPanel.SetActive(true);
+        EnsureSkinSlots();
+        RefreshSkinMenu("Šipky nebo klik = výběr, Enter = zvolit, Esc = zpět");
+    }
+
+    public void CloseSkinMenu()
+    {
+        if (state != State.Skins) return;
+        state = State.Title;
+        if (skinsPanel) skinsPanel.SetActive(false);
+        if (titlePanel) titlePanel.SetActive(true);
+        if (snake) { snake.ApplySkin(SkinCatalog.Current()); snake.Stop(); }
+    }
+
+    // Pro demo/test: zadá tajný kód stejně, jako by ho napsal hráč.
+    public bool TryUnlockCode(string code)
+    {
+        skinCode = code ?? "";
+        return SubmitSkinCode();
+    }
+
+    public bool SubmitSkinCode()
+    {
+        var unlocked = SkinCatalog.UnlockWithCode(skinCode);
+        if (unlocked == null)
+        {
+            RefreshSkinMenu("Neplatný kód");
+            return false;
+        }
+        SkinCatalog.Select(unlocked.id);
+        skinCursor = SkinCatalog.IndexOf(unlocked.id);
+        skinCode = "";
+        if (snake) { snake.ApplySkin(unlocked); snake.Stop(); }
+        RefreshSkinMenu($"Odemčeno: {unlocked.displayName}!");
+        return true;
+    }
+
+    void SkinMenuInput()
+    {
+        if (Input.GetKeyDown(KeyCode.Escape)) { CloseSkinMenu(); return; }
+        int n = SkinCatalog.All.Length;
+        if (Input.GetKeyDown(KeyCode.LeftArrow)) { skinCursor = (skinCursor + n - 1) % n; RefreshSkinMenu(); }
+        if (Input.GetKeyDown(KeyCode.RightArrow)) { skinCursor = (skinCursor + 1) % n; RefreshSkinMenu(); }
+        foreach (char c in Input.inputString)
+        {
+            if (c == '\b') { if (skinCode.Length > 0) skinCode = skinCode.Substring(0, skinCode.Length - 1); }
+            else if (c == '\n' || c == '\r')
+            {
+                if (skinCode.Length > 0) SubmitSkinCode();
+                else TrySelectHighlighted();
+                return;
+            }
+            else if (!char.IsControl(c) && skinCode.Length < 16) skinCode += c;
+            RefreshSkinMenu();
+        }
+    }
+
+    void TrySelectHighlighted()
+    {
+        var s = SkinCatalog.All[Mathf.Clamp(skinCursor, 0, SkinCatalog.All.Length - 1)];
+        if (!SkinCatalog.IsUnlocked(s))
+        {
+            RefreshSkinMenu("Tenhle skin je zamčený – zadej tajný kód");
+            return;
+        }
+        SkinCatalog.Select(s.id);
+        if (snake) { snake.ApplySkin(s); snake.Stop(); }
+        RefreshSkinMenu($"Vybráno: {s.displayName}");
+    }
+
+    void EnsureSkinSlots()
+    {
+        if (skinSlotsBuilt || skinsSlotRoot == null) return;
+        skinSlotsBuilt = true;
+        var font = TMP_Settings.defaultFontAsset;
+        float w = 200f, gap = 16f;
+        int n = SkinCatalog.All.Length;
+        float total = n * w + (n - 1) * gap;
+        for (int i = 0; i < n; i++)
+        {
+            int idx = i;
+            var s = SkinCatalog.All[i];
+            var go = new GameObject("SkinSlot_" + s.id, typeof(RectTransform), typeof(Image), typeof(Button), typeof(Outline));
+            go.transform.SetParent(skinsSlotRoot, false);
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(w, 150);
+            rt.anchoredPosition = new Vector2(-total / 2f + w / 2f + i * (w + gap), 0);
+            go.GetComponent<Image>().color = new Color(0.04f, 0.02f, 0.08f, 0.95f);
+            var ol = go.GetComponent<Outline>();
+            ol.effectColor = s.emissionColor; ol.effectDistance = new Vector2(3, -3);
+            var label = new GameObject("Label", typeof(RectTransform)).AddComponent<TextMeshProUGUI>();
+            label.transform.SetParent(go.transform, false);
+            label.font = font; label.fontSize = 28; label.alignment = TextAlignmentOptions.Center;
+            label.fontStyle = FontStyles.Bold; label.color = Color.white;
+            var lrt = label.rectTransform;
+            lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
+            lrt.offsetMin = new Vector2(6, 8); lrt.offsetMax = new Vector2(-6, -8);
+            go.GetComponent<Button>().onClick.AddListener(() =>
+            {
+                skinCursor = idx;
+                if (SkinCatalog.IsUnlocked(s)) TrySelectHighlighted();
+                else RefreshSkinMenu("Tenhle skin je zamčený – zadej tajný kód");
+            });
+        }
+    }
+
+    void RefreshSkinMenu(string hint = null)
+    {
+        var cur = SkinCatalog.Current();
+        var hi = SkinCatalog.All[Mathf.Clamp(skinCursor, 0, SkinCatalog.All.Length - 1)];
+        if (skinsListText)
+        {
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < SkinCatalog.All.Length; i++)
+            {
+                var s = SkinCatalog.All[i];
+                bool on = i == skinCursor;
+                bool unlocked = SkinCatalog.IsUnlocked(s);
+                bool used = cur != null && cur.id == s.id;
+                string name = unlocked ? s.displayName : "???";
+                if (!unlocked) name += "  zámek";
+                if (used) name += "  ✓";
+                string line = on ? $"<color=#FFE14D>▶ {name}</color>" : name;
+                Color c = unlocked ? s.emissionColor : new Color(0.35f, 0.35f, 0.45f);
+                string hex = ColorUtility.ToHtmlStringRGB(new Color(Mathf.Clamp01(c.r), Mathf.Clamp01(c.g), Mathf.Clamp01(c.b)));
+                sb.Append($"<color=#{hex}>●</color> {line}\n");
+            }
+            skinsListText.text = sb.ToString();
+        }
+        if (skinsPreview)
+        {
+            Color e = SkinCatalog.IsUnlocked(hi) ? hi.emissionColor : new Color(0.2f, 0.2f, 0.25f);
+            // Image nepodporuje HDR, tak barvu stáhneme do 0–1
+            skinsPreview.color = new Color(Mathf.Clamp01(e.r), Mathf.Clamp01(e.g), Mathf.Clamp01(e.b), 1f);
+        }
+        if (skinsCodeText) skinsCodeText.text = $"Tajný kód: <color=#33FFE0>{skinCode}_</color>";
+        if (skinsHintText && hint != null) skinsHintText.text = hint;
+        // popisky na klikacích kartách
+        if (skinsSlotRoot)
+        {
+            for (int i = 0; i < skinsSlotRoot.childCount && i < SkinCatalog.All.Length; i++)
+            {
+                var s = SkinCatalog.All[i];
+                bool unlocked = SkinCatalog.IsUnlocked(s);
+                bool on = i == skinCursor;
+                var img = skinsSlotRoot.GetChild(i).GetComponent<Image>();
+                var ol = skinsSlotRoot.GetChild(i).GetComponent<Outline>();
+                var label = skinsSlotRoot.GetChild(i).GetComponentInChildren<TMP_Text>();
+                Color e = unlocked ? s.emissionColor : new Color(0.25f, 0.25f, 0.3f);
+                Color ui = new Color(Mathf.Clamp01(e.r), Mathf.Clamp01(e.g), Mathf.Clamp01(e.b), 1f);
+                if (img) img.color = on ? new Color(ui.r * 0.25f, ui.g * 0.25f, ui.b * 0.25f, 0.95f) : new Color(0.04f, 0.02f, 0.08f, 0.95f);
+                if (ol) { ol.effectColor = on ? ui : ui * 0.45f; ol.effectDistance = on ? new Vector2(5, -5) : new Vector2(2, -2); }
+                if (label) label.text = unlocked ? s.displayName + (cur != null && cur.id == s.id ? "\n<size=70%>VYBRÁNO</size>" : "") : "???\n<size=70%>zámek</size>";
+            }
         }
     }
 }

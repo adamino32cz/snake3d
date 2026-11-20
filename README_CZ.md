@@ -52,7 +52,8 @@ Vše je v datech: `LevelData.cs` (enum `Objective` = druh úkolu: `EatFood`, `Ea
 **Skórování.** Body podle tabulky výše (krát combo). Rekord a tabulka **TOP 10** se ukládají přes `PlayerPrefs` (soubor `HighScores.cs`). Když se dostaneš do TOP 10, napíšeš po konci hry své jméno (Enter = uložit).
 
 **Ovládání.**
-- Úvodní obrazovka: **1–9, 0** nebo šipky vlevo/vpravo = výběr odemčeného levelu, **mezerník** = start.
+- Úvodní obrazovka: **1–9, 0** nebo šipky vlevo/vpravo = výběr odemčeného levelu, **mezerník** = start, **K** nebo tlačítko **SKINY** = menu vzhledů hada.
+- Menu SKINY: šipky nebo klik = výběr, Enter = zvolit (odemčený), pole na tajný kód + **OK**, **Esc** nebo **ZPĚT** = zpět na úvod. Výběr a odemčení se ukládají.
 - Hra: **W/A/S/D** nebo šipky (otočka o 180° není možná), **Esc** nebo **P** = pauza.
 - Pauza: šipky vlevo/vpravo = hlasitost hudby, nahoru/dolů = hlasitost zvuků (uloží se), **R** = znovu, **Q** = úvodní obrazovka.
 - Konec hry: napiš jméno + Enter (když jsi v TOP 10), pak **R** / mezerník / tlačítko „Hrát znovu“.
@@ -64,7 +65,7 @@ snake3d/
 ├── Assets/
 │   ├── Scripts/   GameManager, SnakeController, FoodSpawner, Food, FoodType, MovingObstacle, GridArena,
 │   │              NeonFX, NeonPulse, CameraRig, UIPunch, SoundFX, FloatingText, SnakeAutoplay (demo),
-│   │              LevelData (kampaň + úkoly), HighScores, FoodArrow, Spin, Tongue
+│   │              LevelData (kampaň + úkoly), HighScores, FoodArrow, Spin, Tongue, SkinData (katalog vzhledů)
 │   ├── Models/    3D modely Kenney (KenneyFoodKit, KenneyPlatformerKit) + License.txt
 │   ├── Audio/     eat.wav, turbo.wav, crash.wav, music.wav (vyrobené programem)
 │   ├── Editor/    SnakeSceneSetup.cs (automatická stavba scény), SnakeBatch.cs
@@ -106,8 +107,16 @@ Alternativa: vytvoř nový projekt ze šablony **3D (URP)** a zkopíruj do něj 
 Skript `Assets/Scripts/SnakeAutoplay.cs` umí hrát sám a fotit screenshoty. Při normální hře se nespustí.
 Zapne se jen parametrem při spuštění sestavené hry, např. na Linuxu:
 `./Snake3D.x86_64 -autoplay -screenshots -shotdir ./Screenshots`
-Další parametry pro testování: `-resetcampaign` (zamkne zase všechny levely), `-tutorial` (ukáže nápovědu znovu), `-startlevel 3` (začne rovnou ve 3. levelu), `-onlyfood Magnet` (na ploše bude jen jeden druh jídla – hodí se na vyzkoušení).
+Další parametry pro testování: `-resetcampaign` (zamkne zase všechny levely), `-tutorial` (ukáže nápovědu znovu), `-startlevel 3` (začne rovnou ve 3. levelu), `-onlyfood Magnet` (na ploše bude jen jeden druh jídla – hodí se na vyzkoušení), `-skin fire` (vybere vzhled podle id), `-openskins` (otevře menu SKINY), `-shotfood Gold` (s `-screenshots` vyfotí daný druh jídla a skončí).
 Pomocné příkazy pro příkazovou řádku jsou v `Assets/Editor/SnakeBatch.cs` (import TMP, stavba scény, build pro Linux).
+
+## Skiny (vzhled hada)
+
+Na úvodní obrazovce je tlačítko **SKINY** (nebo klávesa **K**). Jsou tu čtyři odemčené vzhledy (Neon zelená, Ohnivý, Ledový, Zlatý) a jeden tajný skin, který se odemkne kódem zadaným v menu. Výběr i odemčení se ukládají do `PlayerPrefs`.
+
+Barvy hada (hlava, tělo, záře) bere `SnakeController` z katalogu v `Assets/Scripts/SkinData.cs` (`SkinCatalog.All`). **Nový skin přidáš** jako další položku v tom poli: `id`, `displayName`, `headColor`, `bodyColor`, `emissionColor` (záře pro bloom, klidně jasnější než bílá), volitelně `secret` + `unlockCode`. Pole `customHeadId` je připravené na pozdější skin s vlastním modelem hlavy, zatím se nepoužívá.
+
+V levelu, kde je cílem sníst určitý druh jídla (např. zlaté hvězdy), spawner na ploše vždy nechá aspoň jeden kus toho druhu, aby šel úkol splnit.
 
 ## Grafika (neonový styl)
 

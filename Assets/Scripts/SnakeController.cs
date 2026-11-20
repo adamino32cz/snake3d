@@ -15,6 +15,7 @@ public class SnakeController : MonoBehaviour
     [Header("Vzhled (neon)")]
     public Color headColor = new Color(0.1f, 1f, 0.6f);   // barva u hlavy
     public Color tailColor = new Color(0.1f, 0.3f, 1f);   // barva na konci ocasu
+    public Color emissionColor = new Color(0.2f, 1.2f, 0.7f); // záře (HDR)
     public float headGlow = 1.8f;                            // síla záře u hlavy
     public float tailGlow = 1f;                          // síla záře na ocasu
     public float bodySize = 0.8f;                          // velikost kuliček těla
@@ -64,6 +65,19 @@ public class SnakeController : MonoBehaviour
         for (int i = 1; i < startLength; i++) AddSegment(start - dir * i);
         pendingGrow = 0; speedBoostTimer = 0; shieldTimer = 0; timer = 0; interval = stepInterval; alive = true;
         if (boostTrail) { boostTrail.emitting = false; boostTrail.Clear(); }
+        ApplySkin(SkinCatalog.Current());
+    }
+
+    // Nastaví barvy podle vybraného skinu a hned je aplikuje na hlavu i tělo.
+    // customHeadId je připravené místo pro budoucí vlastní model hlavy (zatím se nepoužívá).
+    public void ApplySkin(SkinData skin)
+    {
+        if (skin == null) return;
+        headColor = skin.headColor;
+        tailColor = skin.bodyColor;
+        emissionColor = skin.emissionColor;
+        headGlow = skin.headGlow;
+        tailGlow = skin.bodyGlow;
         UpdateLook();
     }
 
@@ -171,25 +185,46 @@ public class SnakeController : MonoBehaviour
         gameManager.OnSnakeMoved(head);
     }
 
-    // Obarví tělo: od hlavy (jasná barva) k ocasu (jiná barva, slabší záře) a ocas zúží.
+    // Obarví hlavu i tělo podle aktuálního skinu: od hlavy k ocasu a ocas zúží.
     void UpdateLook()
     {
         if (block == null) block = new MaterialPropertyBlock();
         int n = segments.Count;
         foreach (var sgm in segments) sgm.GetComponent<Renderer>().enabled = true;
-        if (n > 0) { var hr = segments[0].GetComponent<Renderer>(); hr.GetPropertyBlock(block); block.Clear(); hr.SetPropertyBlock(block); }
+        if (n > 0) TintPart(segments[0], headColor, emissionColor, headGlow, true);
         for (int i = 1; i < n; i++)
         {
             float t = n > 2 ? (i - 1f) / (n - 2f) : 0f;           // 0 = u hlavy, 1 = konec ocasu
             Color c = Color.Lerp(headColor, tailColor, t);
+            Color e = Color.Lerp(emissionColor, emissionColor * 0.55f, t);
             float glow = Mathf.Lerp(headGlow, tailGlow, t);
-            var r = segments[i].GetComponent<Renderer>();
-            r.GetPropertyBlock(block);
-            block.SetColor(BaseColorId, c * 0.3f);
-            block.SetColor(EmissionId, c * glow);
-            r.SetPropertyBlock(block);
+            TintPart(segments[i], c, e, glow, false);
             segments[i].localScale = Vector3.one * Mathf.Lerp(bodySize, tailSize, t);
         }
+    }
+
+    // Obarví renderer (u hlavy i čumák, oči a obočí nechá být).
+    void TintPart(Transform part, Color surface, Color emit, float glow, bool isHead)
+    {
+        if (block == null) block = new MaterialPropertyBlock();
+        void Apply(Renderer r)
+        {
+            if (!r || r is TrailRenderer) return;
+            r.GetPropertyBlock(block);
+            block.SetColor(BaseColorId, surface * 0.3f);
+            block.SetColor(EmissionId, emit * glow);
+            r.SetPropertyBlock(block);
+        }
+        if (isHead)
+        {
+            Apply(part.GetComponent<Renderer>());
+            for (int i = 0; i < part.childCount; i++)
+            {
+                var ch = part.GetChild(i);
+                if (ch.name == "Snout") Apply(ch.GetComponent<Renderer>());
+            }
+        }
+        else Apply(part.GetComponent<Renderer>());
     }
 
     // Duhové barvy (štít): každý článek má jiný odstín a barvy se posouvají v čase.

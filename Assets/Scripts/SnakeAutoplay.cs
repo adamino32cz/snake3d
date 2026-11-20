@@ -9,6 +9,9 @@ using UnityEngine;
 //                  a vyhýbá se zdem, svému tělu a překážkám
 //   -screenshots   uloží pár obrázků (PNG) do složky "Screenshots" vedle hry
 //                  nebo do složky zadané jako -shotdir <cesta>
+//   -openskins     otevře menu SKINY (s -screenshots udělá jen krátké fotky menu a hry)
+//   -skin <id>     vybere vzhled (neon / fire / ice / gold / delta) – nastaví GameManager
+//   -shotfood <Kind>  s -screenshots: počká, až daný druh jídla bude na ploše, vyfotí a skončí
 // Při normálním hraní se tento skript vůbec nespustí.
 public class SnakeAutoplay : MonoBehaviour
 {
@@ -25,7 +28,7 @@ public class SnakeAutoplay : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Init()
     {
-        if (!HasArg("-autoplay") && !HasArg("-screenshots")) return;
+        if (!HasArg("-autoplay") && !HasArg("-screenshots") && !HasArg("-openskins") && !HasArg("-shotfood")) return;
         Debug.Log("[Snake3D] Demo režim zapnut.");
         new GameObject("SnakeAutoplay").AddComponent<SnakeAutoplay>();
     }
@@ -40,8 +43,105 @@ public class SnakeAutoplay : MonoBehaviour
         var args = CmdArgs.Get();
         int i = System.Array.IndexOf(args, "-shotdir");
         shotDir = i >= 0 && i + 1 < args.Length ? args[i + 1] : Path.Combine(Application.dataPath, "..", "Screenshots");
-        if (HasArg("-screenshots")) { StartCoroutine(TakeShots()); StartCoroutine(WatchLevels()); }
+        if (HasArg("-screenshots") && HasArg("-openskins")) StartCoroutine(ShotSkins());
+        else if (HasArg("-screenshots") && ShotFoodKind() != null) StartCoroutine(ShotObjectiveFood());
+        else if (HasArg("-screenshots")) { StartCoroutine(TakeShots()); StartCoroutine(WatchLevels()); }
+        else if (HasArg("-openskins")) gm.OpenSkinMenu();
         else gm.BeginPlay(); // bez fotek rovnou hrajeme (přeskočí úvodní obrazovku)
+    }
+
+    static string ShotFoodKind()
+    {
+        var a = CmdArgs.Get();
+        int i = System.Array.IndexOf(a, "-shotfood");
+        return i >= 0 && i + 1 < a.Length ? a[i + 1] : null;
+    }
+
+    Food FindFood(FoodKind kind)
+    {
+        if (spawner == null) return null;
+        foreach (var f in spawner.ActiveFood)
+        {
+            if (!f) continue;
+            if (f.type != null && f.type.kind == kind) return f;
+            if (f.name.IndexOf(kind.ToString(), System.StringComparison.OrdinalIgnoreCase) >= 0) return f;
+        }
+        var kinds = new System.Text.StringBuilder();
+        foreach (var f in spawner.ActiveFood)
+            if (f) kinds.Append((f.type != null ? f.type.kind.ToString() : "?") + "(" + f.name + ") ");
+        Debug.Log("[Snake3D] Jídlo na ploše: " + kinds);
+        return null;
+    }
+
+    // Krátké fotky menu skinů + hry s jiným vzhledem, pak konec (bez dlouhého dema).
+    IEnumerator ShotSkins()
+    {
+        Directory.CreateDirectory(shotDir);
+        yield return new WaitForSeconds(1.5f);
+        Shot("00_title.png");
+        yield return new WaitForSeconds(0.4f);
+        gm.OpenSkinMenu();
+        yield return new WaitForSeconds(0.5f);
+        Shot("01_skins_menu.png");
+        yield return new WaitForSeconds(0.4f);
+        gm.TryUnlockCode("DELTA");
+        yield return new WaitForSeconds(0.4f);
+        Shot("02_skins_delta_unlocked.png");
+        yield return new WaitForSeconds(0.4f);
+        SkinCatalog.Select("fire");
+        if (snake) { snake.ApplySkin(SkinCatalog.Current()); snake.Stop(); }
+        gm.CloseSkinMenu();
+        yield return new WaitForSeconds(0.3f);
+        gm.BeginPlay();
+        yield return new WaitForSeconds(2.5f);
+        Shot("03_play_ohniovy.png");
+        yield return new WaitForSeconds(0.5f);
+        Application.Quit();
+    }
+
+    // Počká, až bude na ploše konkrétní druh jídla (třeba Gold), vyfotí ho a skončí.
+    IEnumerator ShotObjectiveFood()
+    {
+        Directory.CreateDirectory(shotDir);
+        string kindName = ShotFoodKind();
+        FoodKind kind = (FoodKind)System.Enum.Parse(typeof(FoodKind), kindName, true);
+        // počkáme, až GameManager.Start položí jídlo (první deltaTime umí být obří)
+        yield return null;
+        yield return null;
+        if (spawner) spawner.EnsureObjectiveFood();
+        if (!gm.IsPlaying) gm.BeginPlay();
+        float t = 0f;
+        Food found = null;
+        while (t < 8f)
+        {
+            found = FindFood(kind);
+            if (found) break;
+            t += Time.unscaledDeltaTime;
+            yield return null;
+        }
+        if (found)
+        {
+            // přiblížíme kameru k jídlu, ať je na fotce dobře vidět
+            var cam = Camera.main; var rig = cam ? cam.GetComponent<CameraRig>() : null;
+            Vector3 p = cam.transform.position; Quaternion r = cam.transform.rotation;
+            if (rig) rig.enabled = false;
+            cam.transform.position = found.transform.position + new Vector3(0, 2.2f, -3.2f);
+            cam.transform.LookAt(found.transform.position);
+            yield return new WaitForSeconds(0.4f);
+            Shot($"00_level{gm.Level + 1}_{kindName.ToLower()}.png");
+            yield return new WaitForSeconds(0.4f);
+            cam.transform.SetPositionAndRotation(p, r);
+            if (rig) rig.enabled = true;
+            yield return new WaitForSeconds(0.4f);
+            Shot($"01_level{gm.Level + 1}_{kindName.ToLower()}_play.png");
+        }
+        else
+        {
+            Debug.LogWarning("[Snake3D] Na ploše není jídlo druhu " + kindName);
+            Shot($"00_level{gm.Level + 1}_{kindName.ToLower()}_MISSING.png");
+        }
+        yield return new WaitForSeconds(0.5f);
+        Application.Quit();
     }
 
     void Update()

@@ -562,7 +562,7 @@ public static class SnakeSceneSetup
         press.rectTransform.sizeDelta = new Vector2(1400, 90); press.text = "stiskni MEZERNÍK";
         var help = Text(title.transform, "Help", new Vector2(0.5f, 0.5f), new Vector2(0, -255), TextAlignmentOptions.Center, 32, fontCyan);
         help.rectTransform.sizeDelta = new Vector2(1600, 60);
-        help.text = "Šipky / WASD = řízení";
+        help.text = "Šipky / WASD = řízení    K = skiny";
         // legenda jídla: vlastní materiál bez záře, jinak by barvy vybledly do bíla
         var legend = Text(title.transform, "FoodLegend", new Vector2(0.5f, 0.5f), new Vector2(0, -315), TextAlignmentOptions.Center, 36, fontPlain);
         legend.rectTransform.sizeDelta = new Vector2(1700, 60);
@@ -571,6 +571,47 @@ public static class SnakeSceneSetup
         lvlSel.rectTransform.sizeDelta = new Vector2(1600, 110);
         gm.levelSelectText = lvlSel;
         gm.titlePanel = title; gm.pressStartText = press;
+
+        // Tlačítko SKINY vpravo dole na úvodní obrazovce
+        var btnSkins = UiButton(title.transform, "SkinsButton", new Vector2(1, 0), new Vector2(-160, 70), new Vector2(260, 86), "SKINY", fontCyan,
+                                new Color(0.02f, 0.15f, 0.2f), Cyan);
+        gm.skinsButton = btnSkins.GetComponent<Button>();
+
+        // Menu skinů (přes celou obrazovku, na začátku skryté)
+        var skins = Panel(ct, "SkinsPanel", new Color(0.01f, 0f, 0.04f, 0.82f));
+        var sTitle = Text(skins.transform, "SkinsTitle", new Vector2(0.5f, 0.5f), new Vector2(0, 420), TextAlignmentOptions.Center, 110, fontMagenta);
+        sTitle.rectTransform.sizeDelta = new Vector2(1200, 160); sTitle.text = "SKINY";
+        var preview = new GameObject("SkinPreview", typeof(RectTransform), typeof(Image), typeof(Outline));
+        preview.transform.SetParent(skins.transform, false);
+        var prt = preview.GetComponent<RectTransform>();
+        prt.anchorMin = prt.anchorMax = new Vector2(0.5f, 0.5f);
+        prt.anchoredPosition = new Vector2(0, 280); prt.sizeDelta = new Vector2(420, 36);
+        preview.GetComponent<Image>().color = Cyan;
+        var pol = preview.GetComponent<Outline>(); pol.effectColor = Cyan; pol.effectDistance = new Vector2(2, -2);
+        gm.skinsPreview = preview.GetComponent<Image>();
+        var slots = new GameObject("SkinSlots", typeof(RectTransform));
+        slots.transform.SetParent(skins.transform, false);
+        var srt = slots.GetComponent<RectTransform>();
+        srt.anchorMin = srt.anchorMax = new Vector2(0.5f, 0.5f);
+        srt.anchoredPosition = new Vector2(0, 140); srt.sizeDelta = new Vector2(1800, 180);
+        gm.skinsSlotRoot = slots.transform;
+        var list = Text(skins.transform, "SkinsList", new Vector2(0.5f, 0.5f), new Vector2(0, -80), TextAlignmentOptions.Center, 36, fontPlain);
+        list.rectTransform.sizeDelta = new Vector2(1400, 260);
+        gm.skinsListText = list;
+        var code = Text(skins.transform, "SkinsCode", new Vector2(0.5f, 0.5f), new Vector2(-120, -260), TextAlignmentOptions.Center, 40, fontCyan);
+        code.rectTransform.sizeDelta = new Vector2(900, 70);
+        gm.skinsCodeText = code;
+        var btnCode = UiButton(skins.transform, "CodeButton", new Vector2(0.5f, 0.5f), new Vector2(420, -260), new Vector2(200, 70), "OK", fontCyan,
+                               new Color(0.02f, 0.15f, 0.2f), Cyan);
+        gm.skinsCodeButton = btnCode.GetComponent<Button>();
+        var hint = Text(skins.transform, "SkinsHint", new Vector2(0.5f, 0.5f), new Vector2(0, -340), TextAlignmentOptions.Center, 32, fontPlain);
+        hint.rectTransform.sizeDelta = new Vector2(1600, 70);
+        gm.skinsHintText = hint;
+        var btnBack = UiButton(skins.transform, "BackButton", new Vector2(0.5f, 0.5f), new Vector2(0, -430), new Vector2(280, 80), "ZPĚT", fontMagenta,
+                               new Color(0.12f, 0.02f, 0.12f), Magenta);
+        gm.skinsBackButton = btnBack.GetComponent<Button>();
+        gm.skinsPanel = skins;
+        skins.SetActive(false);
 
         // Velký nápis při postupu do dalšího levelu
         var lvlPanel = Panel(ct, "LevelPanel", new Color(0, 0, 0, 0.35f));
@@ -944,6 +985,20 @@ public static class SnakeSceneSetup
         var mo = g.AddComponent<MovingObstacle>();
         mo.waypoints = new[] { wa, wb }; mo.speed = speed;
         return mo;
+    }
+
+    static GameObject UiButton(Transform parent, string name, Vector2 anchor, Vector2 pos, Vector2 size, string label, Material fontMat, Color back, Color outline)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button), typeof(Outline));
+        go.transform.SetParent(parent, false);
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = rt.pivot = anchor;
+        rt.anchoredPosition = pos; rt.sizeDelta = size;
+        go.GetComponent<Image>().color = back;
+        var ol = go.GetComponent<Outline>(); ol.effectColor = outline; ol.effectDistance = new Vector2(3, -3);
+        var t = Text(go.transform, "Label", new Vector2(0.5f, 0.5f), Vector2.zero, TextAlignmentOptions.Center, Mathf.Min(42f, size.y * 0.45f), fontMat);
+        t.text = label; t.rectTransform.sizeDelta = size;
+        return go;
     }
 
     static TMP_Text Text(Transform parent, string name, Vector2 anchor, Vector2 pos, TextAlignmentOptions align, float size, Material fontMat)
