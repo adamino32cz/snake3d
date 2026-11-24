@@ -4,6 +4,7 @@ using UnityEngine;
 // Pohyb hada po mřížce: každých stepInterval sekund se posune o jednu buňku.
 // LOGIKA (kolize, jídlo) je pořád po políčkách. Jen OBRAZ (kuličky těla) se mezi
 // políčky plynule posouvá, takže had nevypadá, že "skáče".
+[DefaultExecutionOrder(20)]
 public class SnakeController : MonoBehaviour
 {
     public GridArena arena;
@@ -230,7 +231,12 @@ public class SnakeController : MonoBehaviour
         // Hlava se plynule natáčí ve směru pohybu.
         var look = Quaternion.LookRotation(new Vector3(dir.x, 0, dir.y));
         transform.rotation = Quaternion.Slerp(transform.rotation, look, 15f * Time.deltaTime);
-        RebuildTailTube();
+    }
+
+    void LateUpdate()
+    {
+        // po napozicování postavy: trubka začíná u aktuálních boků a vede za hada
+        if (alive) RebuildTailTube();
     }
 
     public bool UsesRelativeTurn => cameraRig && cameraRig.View != CameraView.Overview;
@@ -271,30 +277,52 @@ public class SnakeController : MonoBehaviour
         UpdateLook();
     }
 
+    void OnDestroy()
+    {
+        if (tailTube) Destroy(tailTube.gameObject);
+    }
+
     void RebuildTailTube()
     {
         if (tailTube == null)
         {
             var go = new GameObject("TailTube");
-            go.transform.SetParent(transform, false);
+            // ve světových souřadnicích – ne jako dítě hlavy, jinak se trubka otočí před postavu
+            if (arena) go.transform.SetParent(arena.transform, false);
+            go.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
             tailTube = go.AddComponent<SnakeTailTube>();
         }
+        // držet identitu, ať vertex pozice (world) zůstanou na místě
+        tailTube.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+
         int n = segments.Count;
         int start = HasCharacter ? 2 : 1; // hlava (a u postavy sukně) zůstane mimo trubku
-        if (n - start < 2) { tailTube.Hide(); return; }
-        var pts = new System.Collections.Generic.List<Vector3>(n);
-        var rads = new System.Collections.Generic.List<float>(n);
+        var pts = new System.Collections.Generic.List<Vector3>(n + 1);
+        var rads = new System.Collections.Generic.List<float>(n + 1);
+        if (HasCharacter)
+        {
+            Vector3 hip = character ? character.HipWorldPosition() : transform.position;
+            Vector3 fwd = new Vector3(dir.x, 0f, dir.y);
+            if (fwd.sqrMagnitude < 1e-6f) fwd = transform.forward;
+            fwd.y = 0f;
+            if (fwd.sqrMagnitude > 1e-6f) fwd.Normalize();
+            // začátek u boků, mírně vzadu, ať trubka vede ZA směr pohybu
+            pts.Add(hip - fwd * 0.08f);
+            rads.Add(Mathf.Max(0.16f, bodySize * 0.58f));
+        }
+        if (n - start < 2 && pts.Count == 0) { tailTube.Hide(); return; }
         for (int i = start; i < n; i++)
         {
             pts.Add(segments[i].position);
             float s = segments[i].localScale.x;
             rads.Add(Mathf.Max(0.08f, s * 0.52f));
         }
+        if (pts.Count < 2) { tailTube.Hide(); return; }
         var mat = (HasCharacter && tailMaterial) ? tailMaterial : bodyMaterial;
         Color emit = emissionColor * (HasCharacter ? 0.7f : 1f);
         if (HasCharacter && characterLook == "miku") emit = new Color(0.25f, 1.1f, 1.0f);
         else if (HasCharacter) emit = new Color(0.7f, 0.35f, 1.1f);
-        tailTube.Rebuild(pts, rads, mat, emit);
+        tailTube.Rebuild(pts, rads, mat, emit, HasCharacter, characterLook == "miku");
     }
 
     void Step()

@@ -2,6 +2,7 @@ using UnityEngine;
 
 // Custom head for secret skins DELTA (kočičí dívka) a MIKU (přebarvený stejný CC0 model).
 // Vzpřímená lamia: trup stojí, ocas hada navazuje u boků. Čistě vizuální.
+[DefaultExecutionOrder(10)]
 public class DeltaGirlCrawler : MonoBehaviour
 {
     public string lookId = "delta";
@@ -74,6 +75,13 @@ public class DeltaGirlCrawler : MonoBehaviour
     }
 
     static Quaternion Rest(Transform t) => t ? t.localRotation : Quaternion.identity;
+
+    // Světová pozice boků – začátek trubky ocasu.
+    public Vector3 HipWorldPosition()
+    {
+        if (hips) return hips.position;
+        return transform.position + Vector3.up * hipHeight;
+    }
 
     // Světová pozice očí pro kameru v 1. osobě.
     public Vector3 EyeWorldPosition()
@@ -178,6 +186,7 @@ public class DeltaGirlCrawler : MonoBehaviour
         transform.localRotation = Quaternion.identity;
         ApplyLamiaPose();
         AlignUpright();
+        ApplyArmPose();
         AutoFit();
     }
 
@@ -194,27 +203,66 @@ public class DeltaGirlCrawler : MonoBehaviour
         float sway = Mathf.Sin(phase * 0.5f);
         if (hips) hips.localRotation = hips0 * Quaternion.Euler(0f, sway * 4f, 0f);
 
-        // Uvolněné paže, lehký pohyb (ne plazení po břiše).
+        // Paže se sklápí až po AlignUpright (ApplyArmPose) – osy MMD i VRoid jsou různé.
         if (mmd)
         {
-            // MMD osy se liší – jen malý pohyb, ať se mesh nerozpadne.
-            if (lUpper) lUpper.localRotation = lUpper0 * Quaternion.Euler(0f, 0f, 18f + 4f * sway);
-            if (rUpper) rUpper.localRotation = rUpper0 * Quaternion.Euler(0f, 0f, -18f - 4f * sway);
             if (lUpperLeg) lUpperLeg.localRotation = lUpperLeg0 * Quaternion.Euler(-40f, 0f, 0f);
             if (rUpperLeg) rUpperLeg.localRotation = rUpperLeg0 * Quaternion.Euler(-40f, 0f, 0f);
         }
         else
         {
-            // Výchozí T-pose má paže vodorovně – spustíme je podél těla.
-            if (lUpper) lUpper.localRotation = lUpper0 * Quaternion.Euler(8f, 6f, -70f + 6f * sway);
-            if (lLower) lLower.localRotation = lLower0 * Quaternion.Euler(0f, 0f, 16f);
-            if (rUpper) rUpper.localRotation = rUpper0 * Quaternion.Euler(8f, -6f, 70f - 6f * sway);
-            if (rLower) rLower.localRotation = rLower0 * Quaternion.Euler(0f, 0f, -14f);
             if (lUpperLeg) lUpperLeg.localRotation = lUpperLeg0 * Quaternion.Euler(-85f, 6f, 8f);
             if (rUpperLeg) rUpperLeg.localRotation = rUpperLeg0 * Quaternion.Euler(-85f, -6f, -8f);
             if (lLowerLeg) lLowerLeg.localRotation = lLowerLeg0 * Quaternion.Euler(18f, 0f, 0f);
             if (rLowerLeg) rLowerLeg.localRotation = rLowerLeg0 * Quaternion.Euler(18f, 0f, 0f);
         }
+    }
+
+
+    // Sklopí paže z T-pózy (~70° dolů a mírně dopředu) ve světových osách,
+    // ať to funguje u VRoid (DELTA) i MMD (MIKU) bez trhání meshe.
+    void ApplyArmPose()
+    {
+        float phase = Time.time * crawlSpeed;
+        float sway = Mathf.Sin(phase * 0.5f);
+        LowerArm(lUpper, lLower, lUpper0, lLower0, -1f, sway);
+        LowerArm(rUpper, rLower, rUpper0, rLower0,  1f, -sway);
+    }
+
+    void LowerArm(Transform upper, Transform lower, Quaternion upper0, Quaternion lower0, float side, float sway)
+    {
+        if (!upper) return;
+        upper.localRotation = upper0;
+        Vector3 along;
+        if (lower) along = lower.position - upper.position;
+        else if (upper.childCount > 0) along = upper.GetChild(0).position - upper.position;
+        else along = side * transform.right;
+        if (along.sqrMagnitude < 1e-10f) return;
+        along.Normalize();
+
+        Vector3 down = Vector3.down;
+        Vector3 fwd = transform.forward;
+        Vector3 outward = transform.right * side;
+        // ~70° z vodorovné T-pózy (= 20° od svislice), plus mírně dopředu a od těla
+        float downDeg = 70f + sway * 3f;
+        float fromVert = Mathf.Max(5f, 90f - downDeg);
+        Vector3 want = (down * Mathf.Cos(fromVert * Mathf.Deg2Rad)
+                        + fwd * 0.28f
+                        + outward * 0.16f).normalized;
+        upper.rotation = Quaternion.FromToRotation(along, want) * upper.rotation;
+
+        if (!lower) return;
+        lower.localRotation = lower0;
+        Vector3 mid;
+        if (lower.childCount > 0) mid = lower.GetChild(0).position - lower.position;
+        else mid = lower.forward;
+        if (mid.sqrMagnitude < 1e-10f) return;
+        mid.Normalize();
+        // lehké pokrčení v lokti, bez rolování kosti
+        Vector3 bendToward = (mid + down * 0.25f + fwd * 0.2f - outward * 0.08f).normalized;
+        Vector3 axis = Vector3.Cross(mid, bendToward);
+        if (axis.sqrMagnitude > 1e-8f)
+            lower.rotation = Quaternion.AngleAxis(18f, axis.normalized) * lower.rotation;
     }
 
     int _dbg;

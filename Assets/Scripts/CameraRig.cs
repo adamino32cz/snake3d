@@ -3,6 +3,7 @@ using UnityEngine;
 // Kamera: přehled (výchozí shora) / 3. osoba / 1. osoba. Přepíná se klávesou C.
 public enum CameraView { Overview, ThirdPerson, FirstPerson }
 
+[DefaultExecutionOrder(50)]
 public class CameraRig : MonoBehaviour
 {
     public Transform target;          // koho sledovat (hlava hada)
@@ -78,8 +79,9 @@ public class CameraRig : MonoBehaviour
             Quaternion wantRot;
             if (View == CameraView.ThirdPerson)
             {
-                wantPos = target.position - fwd * 4.6f + Vector3.up * 2.5f;
-                Vector3 look = target.position + Vector3.up * 1.15f;
+                // za postavou, mírně nad ní, pohled dopředu a trochu dolů (ocas pod/za ní)
+                wantPos = target.position - fwd * 5.2f + Vector3.up * 2.15f;
+                Vector3 look = target.position + Vector3.up * 0.85f + fwd * 1.2f;
                 wantRot = Quaternion.LookRotation((look - wantPos).normalized, Vector3.up);
             }
             else
