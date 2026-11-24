@@ -6,6 +6,8 @@ public class SnakeTailTube : MonoBehaviour
 {
     public int sides = 16;
     public int extra = 3; // mezibody mezi články
+    public float flattenX = 1f; // šířka průřezu (1 = kruh, >1 = stuhová)
+    public float flattenY = 1f; // výška průřezu (<1 = zploštělé vlasy)
     const int CapRings = 5;
 
     Mesh mesh;
@@ -99,8 +101,9 @@ public class SnakeTailTube : MonoBehaviour
                 mr.GetPropertyBlock(block);
                 if (hair)
                 {
-                    block.SetColor("_BaseColor", new Color(0.14f, 0.62f, 0.58f));
-                    block.SetColor("_EmissionColor", new Color(0.28f, 0.95f, 0.88f) * 0.7f);
+                    // Hatsune Miku typická barva vlasů ~#39C5BB
+                    block.SetColor("_BaseColor", new Color(0.22f, 0.77f, 0.73f));
+                    block.SetColor("_EmissionColor", new Color(0.40f, 0.98f, 0.92f) * 0.55f);
                     block.SetTexture("_BaseMap", HairTex());
                     block.SetTexture("_EmissionMap", HairEmitTex());
                 }
@@ -162,9 +165,9 @@ public class SnakeTailTube : MonoBehaviour
             float v = y / (h - 1f);
             float ridge = Mathf.Pow(1f - Mathf.Abs(u - 0.5f) * 2f, 1.35f);
             float strand = 0.65f + 0.35f * Mathf.Sin(u * 24f + v * 4f);
-            Color dark = new Color(0.05f, 0.26f, 0.28f);
-            Color mid = new Color(0.22f, 0.82f, 0.76f);
-            Color hi = new Color(0.62f, 1f, 0.95f);
+            Color dark = new Color(0.08f, 0.38f, 0.40f);
+            Color mid = new Color(0.25f, 0.85f, 0.80f);
+            Color hi = new Color(0.75f, 1f, 0.96f);
             Color c = Color.Lerp(dark, mid, 0.4f + 0.35f * strand);
             c = Color.Lerp(c, hi, ridge * 0.42f);
             t.SetPixel(x, y, c);
@@ -308,11 +311,12 @@ public class SnakeTailTube : MonoBehaviour
             {
                 // šev dole (bin typicky míří dolů)
                 float a = s * Mathf.PI * 2f / sides + Mathf.PI * 0.5f;
-                Vector3 d = nor * Mathf.Cos(a) + bin * Mathf.Sin(a);
-                d.Normalize();
+                float fx = flattenX > 0.05f ? flattenX : 1f;
+                float fy = flattenY > 0.05f ? flattenY : 1f;
+                Vector3 d = nor * (Mathf.Cos(a) * fx) + bin * (Mathf.Sin(a) * fy);
                 int vi = i * ring + s;
                 verts[vi] = pts[i] + d * r;
-                norms[vi] = d;
+                norms[vi] = (nor * (Mathf.Cos(a) / fx) + bin * (Mathf.Sin(a) / fy)).normalized;
                 uvs[vi] = new Vector2(s / (float)sides, v);
             }
         }

@@ -47,6 +47,7 @@ public class SnakeAutoplay : MonoBehaviour
         DeltaGirlCrawler.AllFours = false;
         if (pendingTitleShot && HasArg("-screenshots")) { StartCoroutine(ShotTitleAfterMenu()); return; }
         if (HasArg("-screenshots") && HasArg("-shotnormal")) { StartCoroutine(ShotNormalSkin()); return; }
+        if (HasArg("-screenshots") && HasArg("-shotpolish")) { StartCoroutine(ShotPolish()); return; }
         if (HasArg("-screenshots") && HasArg("-shotgameover")) StartCoroutine(ShotGameOverMenu());
         else if (HasArg("-screenshots") && HasArg("-openskins")) StartCoroutine(ShotSkins());
         else if (HasArg("-screenshots") && ShotFoodKind() != null) StartCoroutine(ShotObjectiveFood());
@@ -256,6 +257,108 @@ public class SnakeAutoplay : MonoBehaviour
     {
         var s = SkinCatalog.Current();
         return s != null && !string.IsNullOrEmpty(s.customHeadId);
+    }
+
+    IEnumerator ShotPolish()
+    {
+        Directory.CreateDirectory(shotDir);
+        yield return new WaitForSeconds(0.7f);
+        yield return ShotPolishSkin("miku");
+        yield return ShotPolishSkin("delta");
+        // regresi výchozího skinu
+        SkinCatalog.Select("neon");
+        if (snake) snake.ApplySkin(SkinCatalog.Current());
+        DeltaGirlCrawler.AllFours = false;
+        if (gm) gm.BeginPlay();
+        if (snake) snake.Grow(8);
+        if (snake) { snake.ResetSnake(); snake.ApplySkin(SkinCatalog.Current()); snake.Grow(8); snake.Resume(); }
+        yield return new WaitForSeconds((snake ? snake.stepInterval : 0.16f) * 4f + 0.25f);
+        if (snake) snake.Stop();
+        var cam = Camera.main;
+        var rig = cam ? cam.GetComponent<CameraRig>() : null;
+        if (rig) { rig.enabled = true; rig.SetView(CameraView.Overview); }
+        if (snake) snake.ApplyCameraView(CameraView.Overview);
+        yield return new WaitForSeconds(0.4f);
+        Shot("neon_overview.png");
+        yield return new WaitForSeconds(0.2f);
+        Application.Quit();
+    }
+
+    IEnumerator ShotPolishSkin(string id)
+    {
+        var skin = SkinCatalog.Get(id);
+        if (skin != null) SkinCatalog.Unlock(skin);
+        SkinCatalog.Select(id);
+        if (snake) snake.ApplySkin(SkinCatalog.Current());
+        DeltaGirlCrawler.AllFours = false;
+        if (gm && !gm.IsPlaying) gm.BeginPlay();
+        else if (gm) { /* už běží – jen reset vzhledu */ }
+        if (snake)
+        {
+            snake.ResetSnake();
+            snake.ApplySkin(SkinCatalog.Current());
+            snake.Grow(12);
+            snake.Resume();
+        }
+        if (snake) { snake.ResetSnake(); snake.ApplySkin(SkinCatalog.Current()); snake.Grow(8); snake.Resume(); }
+        yield return new WaitForSeconds((snake ? snake.stepInterval : 0.16f) * 4f + 0.25f);
+        if (snake) snake.Stop();
+        var cam = Camera.main;
+        var rig = cam ? cam.GetComponent<CameraRig>() : null;
+        if (rig) rig.enabled = true;
+
+        yield return ShotPolishViews(id, "slither");
+
+        // close-up plazení (rig vypnout a počkat snímek, ať zůstane ruční kamera)
+        if (cam && snake)
+        {
+            if (rig) rig.enabled = false;
+            yield return null;
+            Transform h = snake.transform;
+            Vector3 fwd = h.forward; fwd.y = 0f;
+            if (fwd.sqrMagnitude < 1e-6f) fwd = Vector3.forward;
+            fwd.Normalize();
+            Vector3 right = Vector3.Cross(Vector3.up, fwd).normalized;
+            cam.transform.position = h.position + fwd * 3.2f + right * 2.0f + Vector3.up * 1.25f;
+            cam.transform.LookAt(h.position + Vector3.up * 0.36f - fwd * 0.15f);
+            yield return new WaitForSecondsRealtime(0.5f);
+            Shot(id + "_slither_closeup.png");
+            yield return new WaitForSecondsRealtime(0.15f);
+            if (rig) { rig.enabled = true; rig.SetView(CameraView.Overview); }
+            if (snake) snake.ApplyCameraView(CameraView.Overview);
+        }
+
+        DeltaGirlCrawler.AllFours = true;
+        yield return new WaitForSeconds(0.45f);
+        yield return ShotPolishViews(id, "allfours");
+        DeltaGirlCrawler.AllFours = false;
+        yield return new WaitForSeconds(0.2f);
+    }
+
+    IEnumerator ShotPolishViews(string id, string pose)
+    {
+        var cam = Camera.main;
+        var rig = cam ? cam.GetComponent<CameraRig>() : null;
+        if (rig)
+        {
+            rig.SetView(CameraView.Overview);
+            if (snake) snake.ApplyCameraView(CameraView.Overview);
+            yield return new WaitForSeconds(0.4f);
+            Shot(id + "_" + pose + "_overview.png");
+            yield return new WaitForSeconds(0.2f);
+            rig.SetView(CameraView.ThirdPerson);
+            if (snake) snake.ApplyCameraView(CameraView.ThirdPerson);
+            yield return new WaitForSeconds(0.7f);
+            Shot(id + "_" + pose + "_third.png");
+            yield return new WaitForSeconds(0.2f);
+            rig.SetView(CameraView.FirstPerson);
+            if (snake) snake.ApplyCameraView(CameraView.FirstPerson);
+            yield return new WaitForSeconds(0.5f);
+            Shot(id + "_" + pose + "_first.png");
+            yield return new WaitForSeconds(0.2f);
+            rig.SetView(CameraView.Overview);
+            if (snake) snake.ApplyCameraView(CameraView.Overview);
+        }
     }
 
     // Krátké fotky výchozího (neon) skinu: přehled / 3. osoba / 1. osoba a klávesa V.

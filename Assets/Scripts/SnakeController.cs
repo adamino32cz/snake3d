@@ -338,9 +338,17 @@ public class SnakeController : MonoBehaviour
             if (fwd.sqrMagnitude < 1e-6f) fwd = transform.forward;
             fwd.y = 0f;
             if (fwd.sqrMagnitude > 1e-6f) fwd.Normalize();
-            // začátek u boků, mírně vzadu, ať trubka vede ZA směr pohybu
-            pts.Add(hip - fwd * 0.08f);
-            rads.Add(Mathf.Max(0.16f, bodySize * 0.58f));
+            // začátek u boků pod sukní, širší kořen ať naváže na postavu
+            Vector3 join = hip - fwd * 0.06f;
+            pts.Add(join);
+            rads.Add(Mathf.Max(0.20f, bodySize * 0.68f));
+            if (n > start)
+            {
+                Vector3 mid = Vector3.Lerp(join, segments[start].position, 0.45f);
+                mid.y = (join.y + segments[start].position.y) * 0.5f;
+                pts.Add(mid);
+                rads.Add(Mathf.Max(0.17f, bodySize * 0.60f));
+            }
         }
         if (n - start < 2 && pts.Count == 0) { tailTube.Hide(); return; }
         for (int i = start; i < n; i++)

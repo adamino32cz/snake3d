@@ -230,6 +230,8 @@ public class DeltaGirlCrawler : MonoBehaviour
         ResetBind();
         AlignCrawl();
         AutoFit();
+        if (!AllFours)
+            transform.Rotate(MoveDir(), Mathf.Sin(GaitPhase()) * 6.5f, Space.World);
         LiftHead();
         ApplyCrawlGait();
         PlaceLights(MoveDir());
@@ -287,7 +289,7 @@ public class DeltaGirlCrawler : MonoBehaviour
         Vector3 move = MoveDir();
         float torso = head ? Vector3.Distance(hips.position, head.position) : 1.2f;
         Vector3 desired = transform.parent.position - move * Mathf.Max(0.95f, torso * 0.82f);
-        desired.y = AllFours ? (hipHeight > 0.2f ? hipHeight : 0.70f) : 0.30f;
+        desired.y = AllFours ? (hipHeight > 0.2f ? hipHeight : 0.70f) : 0.28f;
         transform.position += desired - hips.position;
     }
 
@@ -313,20 +315,22 @@ public class DeltaGirlCrawler : MonoBehaviour
         float lSwing = Mathf.Sin(phase);   // + = levá ruka vpřed, levá noha vzad
         float rSwing = -lSwing;
 
-        // protisměrné páry: L ruka + P noha, P ruka + L noha
+        // póly blíž k tělu, ať se nohy a lokty nerozjíždějí do stran
+        float handOut = AllFours ? 0.7f : 0.25f;
+        float footOut = AllFours ? 0.35f : 0.10f;
         TwoBoneReach(lUpper, lLower, lHand, lUpper0, lLower0,
             HandTarget(lUpper, move, right, -1f, lSwing),
-            (lUpper ? lUpper.position : Vector3.zero) + right * -1.1f + Vector3.up * 0.45f - move * 0.15f);
+            (lUpper ? lUpper.position : Vector3.zero) + right * -handOut + Vector3.up * 0.3f - move * 0.1f);
         TwoBoneReach(rUpper, rLower, rHand, rUpper0, rLower0,
             HandTarget(rUpper, move, right,  1f, rSwing),
-            (rUpper ? rUpper.position : Vector3.zero) + right *  1.1f + Vector3.up * 0.45f - move * 0.15f);
+            (rUpper ? rUpper.position : Vector3.zero) + right *  handOut + Vector3.up * 0.3f - move * 0.1f);
 
         TwoBoneReach(lUpperLeg, lLowerLeg, lFoot, lUpperLeg0, lLowerLeg0,
             FootTarget(lUpperLeg, move, right, -1f, -lSwing),
-            (lUpperLeg ? lUpperLeg.position : Vector3.zero) + right * -0.7f + move * 0.35f + Vector3.up * 0.15f);
+            (lUpperLeg ? lUpperLeg.position : Vector3.zero) + right * -footOut - move * 0.55f + Vector3.up * 0.08f);
         TwoBoneReach(rUpperLeg, rLowerLeg, rFoot, rUpperLeg0, rLowerLeg0,
             FootTarget(rUpperLeg, move, right,  1f, -rSwing),
-            (rUpperLeg ? rUpperLeg.position : Vector3.zero) + right *  0.7f + move * 0.35f + Vector3.up * 0.15f);
+            (rUpperLeg ? rUpperLeg.position : Vector3.zero) + right *  footOut - move * 0.55f + Vector3.up * 0.08f);
     }
 
     static Vector3 HandTarget(Transform shoulder, Vector3 move, Vector3 right, float side, float swing)
@@ -335,14 +339,14 @@ public class DeltaGirlCrawler : MonoBehaviour
         if (!AllFours)
         {
             return new Vector3(root.x, 0f, root.z)
-                 + move * (0.22f + 0.30f * swing)
-                 + right * side * 0.26f
-                 + Vector3.up * 0.07f;
+                 + move * (0.18f + 0.36f * swing)
+                 + right * side * 0.22f
+                 + Vector3.up * (0.12f + 0.03f * Mathf.Max(0f, swing));
         }
         return new Vector3(root.x, 0f, root.z)
              + move * (0.50f + 0.36f * swing)
-             + right * side * 0.40f
-             + Vector3.up * 0.08f;
+             + right * side * 0.34f
+             + Vector3.up * 0.12f;
     }
 
     static Vector3 FootTarget(Transform thigh, Vector3 move, Vector3 right, float side, float swing)
@@ -350,15 +354,16 @@ public class DeltaGirlCrawler : MonoBehaviour
         Vector3 root = thigh ? thigh.position : Vector3.zero;
         if (!AllFours)
         {
+            // nohy u sebe, natažené vzad, nad zemí (ne skrz podlahu)
             return new Vector3(root.x, 0f, root.z)
-                 - move * (0.88f - 0.10f * swing)
-                 + right * side * 0.11f
-                 + Vector3.up * 0.07f;
+                 - move * (0.95f - 0.08f * swing)
+                 + right * side * 0.045f
+                 + Vector3.up * 0.11f;
         }
         return new Vector3(root.x, 0f, root.z)
              - move * (0.42f - 0.30f * swing)
-             + right * side * 0.22f
-             + Vector3.up * 0.10f;
+             + right * side * 0.18f
+             + Vector3.up * 0.12f;
     }
 
     // Dvoukostý dosah k cíli (světové osy, bez rolování kosti).
@@ -435,7 +440,7 @@ public class DeltaGirlCrawler : MonoBehaviour
         safetyShorts.position = hips.position + Vector3.down * 0.10f + move * 0.02f;
         safetyShorts.rotation = Quaternion.identity;
         float ls = Mathf.Max(0.01f, transform.lossyScale.x);
-        safetyShorts.localScale = new Vector3(0.42f, 0.16f, 0.34f) / ls;
+        safetyShorts.localScale = new Vector3(0.52f, 0.20f, 0.42f) / ls;
     }
 
     // DELTA má sukňové kosti – mírně je svěsíme dolů (bez trhání).

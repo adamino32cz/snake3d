@@ -83,8 +83,8 @@ public class CameraRig : MonoBehaviour
                 Vector3 right = Vector3.Cross(Vector3.up, fwd);
                 if (right.sqrMagnitude < 1e-6f) right = Vector3.right;
                 right.Normalize();
-                wantPos = target.position - fwd * 5.0f + Vector3.up * 3.85f + right * 0.7f;
-                Vector3 look = target.position + fwd * 0.7f + Vector3.up * 0.55f;
+                wantPos = target.position - fwd * 5.2f + Vector3.up * 4.15f + right * 0.7f;
+                Vector3 look = target.position + fwd * 0.7f + Vector3.up * 0.70f;
                 wantRot = Quaternion.LookRotation((look - wantPos).normalized, Vector3.up);
             }
             else
