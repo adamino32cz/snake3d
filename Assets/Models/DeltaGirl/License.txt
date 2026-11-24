@@ -1,0 +1,15 @@
+HairSample_Female
+-----------------
+Ukázkový 3D model VRoid (generátor UniGLTF-1.28) s tmavými culíky a kočičíma ušima.
+
+Licence: CC0 1.0 (public domain)
+  V metadatech VRM je uvedeno:
+  - licenseName: CC0
+  - allowedUserName: Everyone
+  - commercialUssageName: Allow
+  - violentUssageName: Allow
+  - sexualUssageName: Allow
+
+Uvedení autora není povinné. Model je v projektu převedený do FBX (Blender 4.2, glTF import)
+a textury jsou zmenšené na 512–1024 px kvůli velikosti WebGL buildu.
+Původní soubor: HairSample_Female.vrm

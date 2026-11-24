@@ -143,7 +143,8 @@ public static class SnakeSceneSetup
     {
         EnsureTmp();
         SetupURP();
-        foreach (var d in new[] { "Assets/Prefabs", "Assets/Materials", "Assets/Scenes", "Assets/Textures" }) EnsureFolder(d);
+        foreach (var d in new[] { "Assets/Prefabs", "Assets/Materials", "Assets/Scenes", "Assets/Textures", "Assets/Resources" }) EnsureFolder(d);
+        DeltaGirlBuilder.EnsurePrefab();
 
         var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
 
@@ -162,6 +163,13 @@ public static class SnakeSceneSetup
         var matWallM = Mat("WallMagenta", Magenta * 0.3f, Magenta, 3f);
         var matHead = Mat("SnakeHead", new Color(0.1f, 0.5f, 0.3f), new Color(0.2f, 1f, 0.5f), 0.9f, 0.9f);   // slabší záře, ať jsou vidět oči
         var matBody = Mat("SnakeBody", new Color(0.05f, 0.3f, 0.2f), new Color(0.1f, 1f, 0.6f), 2f, 0.9f);
+        var tailFurTex = FurTexture("Assets/Textures/TailFur.png", 128);
+        var matTail = Mat("SnakeTailFur", new Color(0.05f, 0.02f, 0.08f), new Color(0.5f, 0.12f, 1f), 0.7f, 0.25f);
+        matTail.SetTexture("_BaseMap", tailFurTex);
+        matTail.SetTexture("_EmissionMap", tailFurTex);
+        matTail.SetTextureScale("_BaseMap", new Vector2(3, 2));
+        matTail.SetTextureScale("_EmissionMap", new Vector2(3, 2));
+        var matTailHalo = FurHaloMat("SnakeTailHalo", tailFurTex);
         // hadí šupiny: textura vyrobená kódem (světlé "rybí šupiny" s tmavými okraji)
         var scaleTex = ScaleTexture("Assets/Textures/SnakeScales.png", 128);
         matBody.SetTexture("_BaseMap", scaleTex); matBody.SetTextureScale("_BaseMap", new Vector2(4, 2));
@@ -278,6 +286,7 @@ public static class SnakeSceneSetup
             arm.GetComponent<Renderer>().sharedMaterial = matArrow;
         }
         snake.arena = arena; snake.bodyMaterial = matBody;
+        snake.tailMaterial = matTail; snake.tailFurMaterial = matTailHalo;
         // svítící stopa za hlavou, když je had zrychlený
         var trailGo = new GameObject("BoostTrail");
         trailGo.transform.SetParent(head.transform, false);
@@ -832,6 +841,47 @@ public static class SnakeSceneSetup
     }
 
     // Měkká kulatá tečka pro částice.
+    // Srst ocasu: podélné tmavé a světlejší chlupy (šum + pruhy).
+    static Texture2D FurTexture(string path, int size)
+    {
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, true);
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float n = 0;
+                for (int k = 0; k < 3; k++)
+                {
+                    int yy = (y * (3 + k * 5) + x / (2 + k)) % size;
+                    n += 0.5f + 0.5f * Mathf.Sin((x * 0.7f + yy * 2.1f + k * 13) * 0.35f);
+                }
+                n = Mathf.Clamp01(n / 3f);
+                float streak = Mathf.Pow(Mathf.Abs(Mathf.Sin((x + y * 0.15f) * 0.9f)), 4f);
+                float v = Mathf.Lerp(0.15f, 1f, n * 0.55f + streak * 0.45f);
+                tex.SetPixel(x, y, new Color(v, v, v, 1f));
+            }
+        tex.Apply();
+        return SaveTexture(tex, path);
+    }
+
+    // Měkká průhledná "aura srsti" kolem článku ocasu.
+    static Material FurHaloMat(string name, Texture2D tex)
+    {
+        var m = ParticleMat(name, tex, "Universal Render Pipeline/Unlit");
+        m.SetColor("_BaseColor", new Color(0.12f, 0.04f, 0.2f, 0.45f));
+        m.SetFloat("_Surface", 1f);
+        m.SetFloat("_Blend", 0f);
+        m.SetFloat("_ZWrite", 0f);
+        m.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        m.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        m.SetOverrideTag("RenderType", "Transparent");
+        m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+        m.EnableKeyword("_EMISSION");
+        m.SetColor("_EmissionColor", new Color(0.4f, 0.1f, 0.8f) * 0.6f);
+        EditorUtility.SetDirty(m);
+        return m;
+    }
+
     // Šupiny: každá šupina je půlkruh; uprostřed světlá, na okraji tmavá.
     static Texture2D ScaleTexture(string path, int size)
     {

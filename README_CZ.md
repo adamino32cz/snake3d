@@ -65,8 +65,8 @@ snake3d/
 ├── Assets/
 │   ├── Scripts/   GameManager, SnakeController, FoodSpawner, Food, FoodType, MovingObstacle, GridArena,
 │   │              NeonFX, NeonPulse, CameraRig, UIPunch, SoundFX, FloatingText, SnakeAutoplay (demo),
-│   │              LevelData (kampaň + úkoly), HighScores, FoodArrow, Spin, Tongue, SkinData (katalog vzhledů)
-│   ├── Models/    3D modely Kenney (KenneyFoodKit, KenneyPlatformerKit) + License.txt
+│   │              LevelData (kampaň + úkoly), HighScores, FoodArrow, Spin, Tongue, SkinData (katalog vzhledů), DeltaGirlCrawler (postava skinu DELTA)
+│   ├── Models/    3D modely Kenney (KenneyFoodKit, KenneyPlatformerKit) + DeltaGirl (HairSample_Female, CC0) + License.txt
 │   ├── Audio/     eat.wav, turbo.wav, crash.wav, music.wav (vyrobené programem)
 │   ├── Editor/    SnakeSceneSetup.cs (automatická stavba scény), SnakeBatch.cs
 │   ├── Settings/  URP nastavení + profil post-processingu
@@ -114,7 +114,9 @@ Pomocné příkazy pro příkazovou řádku jsou v `Assets/Editor/SnakeBatch.cs`
 
 Na úvodní obrazovce je tlačítko **SKINY** (nebo klávesa **K**). Jsou tu čtyři odemčené vzhledy (Neon zelená, Ohnivý, Ledový, Zlatý) a jeden tajný skin, který se odemkne kódem zadaným v menu. Výběr i odemčení se ukládají do `PlayerPrefs`.
 
-Barvy hada (hlava, tělo, záře) bere `SnakeController` z katalogu v `Assets/Scripts/SkinData.cs` (`SkinCatalog.All`). **Nový skin přidáš** jako další položku v tom poli: `id`, `displayName`, `headColor`, `bodyColor`, `emissionColor` (záře pro bloom, klidně jasnější než bílá), volitelně `secret` + `unlockCode`. Pole `customHeadId` je připravené na pozdější skin s vlastním modelem hlavy, zatím se nepoužívá.
+Barvy hada (hlava, tělo, záře) bere `SnakeController` z katalogu v `Assets/Scripts/SkinData.cs` (`SkinCatalog.All`). **Nový skin přidáš** jako další položku v tom poli: `id`, `displayName`, `headColor`, `bodyColor`, `emissionColor` (záře pro bloom, klidně jasnější než bílá), volitelně `secret` + `unlockCode`. Pole `customHeadId` umí vlastní model hlavy.
+
+Tajný skin **DELTA** (kód `DELTA`, test: `-skin delta`) nahradí hadí hlavu anime postavou (VRoid HairSample_Female, viz licence níže). Postava leží na břiše na místě hlavy, plazí se dopředu (procedurální pohyb rukou) a články těla hada jsou její rostoucí tmavě fialovo-černý chlupatý ocas, který se ke špičce zužuje a zesvětluje. Kolize a ovládání zůstávají stejné. Ostatní skiny (Neon, Ohnivý, Ledový, Zlatý) se nezměnily. Model je v `Assets/Models/DeltaGirl/` (FBX + zmenšené textury) a prefab v `Assets/Resources/DeltaGirl.prefab`.
 
 V levelu, kde je cílem sníst určitý druh jídla (např. zlaté hvězdy), spawner na ploše vždy nechá aspoň jeden kus toho druhu, aby šel úkol splnit.
 
@@ -159,8 +161,9 @@ Všechny 3D modely jsou zdarma s licencí **CC0** (public domain) – smí se po
 |---|---|---|---|---|
 | Food Kit (2.0) | Kenney (www.kenney.nl) | https://kenney.nl/assets/food-kit | CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/) | jablko, houba, plechovka (soda-can), šálek kávy (cup-coffee) |
 | Platformer Kit (4.1) | Kenney (www.kenney.nl) | https://kenney.nl/assets/platformer-kit | CC0 1.0 | hvězda (star), srdce (heart), kotoučová pila (saw) |
+| HairSample_Female | VRoid ukázkový model (UniGLTF-1.28) | VRM meta: title HairSample_Female | CC0 1.0 (v metadatech VRM: licenseName=CC0, použití všemi, komerční použití povoleno) | tajný skin DELTA: postava s tmavými culíky a kočičíma ušima (převedeno do FBX, textury 512–1024 px) |
 
-Licenční soubory jsou přiložené v `Assets/Models/KenneyFoodKit/License.txt` a `Assets/Models/KenneyPlatformerKit/License.txt`.
+Licenční soubory jsou přiložené v `Assets/Models/KenneyFoodKit/License.txt`, `Assets/Models/KenneyPlatformerKit/License.txt` a `Assets/Models/DeltaGirl/License.txt`.
 Zvuky a hudbu jsme vyrobili sami programem (`Tools/generate_audio.py`), písmo LiberationSans je součástí TextMesh Pro (licence SIL OFL).
 
 **Tip:** modely Kenney mají plochy s jedinou UV souřadnicí. Proto mají v importu vypnuté **tangenty** (jinak vznikají chybné pixely „NaN“, které bloom roztáhne do bílé skvrny) – nastavuje to `SnakeSceneSetup` automaticky.

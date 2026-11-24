@@ -18,6 +18,20 @@ public static class SnakeBatch
     // 2) Postaví scénu (stejné jako menu Tools > Snake 3D > Vytvořit scénu).
     public static void BuildScene() => SnakeSceneSetup.BuildScene();
 
+    // 2b) Scéna + Linux build v jednom spuštění editoru (šetří čas).
+    public static void BuildSceneAndLinux()
+    {
+        SnakeSceneSetup.BuildScene();
+        BuildLinux();
+    }
+
+    // 2c) Scéna + WebGL build v jednom spuštění editoru.
+    public static void BuildSceneAndWebGL()
+    {
+        SnakeSceneSetup.BuildScene();
+        BuildWebGL();
+    }
+
     // 3) Sestaví hru pro Linux do složky Build/Linux.
     public static void BuildLinux()
     {
@@ -99,6 +113,7 @@ public static class SnakeBatch
             Debug.LogWarning("[Snake3D] OSX architecture: " + e.Message);
         }
     }
+
 
     static Type FindType(string fullName)
     {

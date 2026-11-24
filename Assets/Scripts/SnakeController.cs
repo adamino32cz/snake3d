@@ -22,6 +22,11 @@ public class SnakeController : MonoBehaviour
     public float tailSize = 0.5f;                          // velikost poslední kuličky
     public bool smoothMovement = true;                     // plynulý pohyb mezi políčky
     public TrailRenderer boostTrail;                       // svítící stopa při zrychlení
+    public Material tailMaterial;                          // materiál chlupatého ocasu (DELTA)
+    public Material tailFurMaterial;                       // měkká "srst" kolem článků ocasu
+
+    DeltaGirlCrawler deltaGirl;
+    bool deltaLook;
 
     readonly List<Vector2Int> cells = new List<Vector2Int>();   // buňky hada (0 = hlava)
     readonly List<Transform> segments = new List<Transform>();  // 3D objekty článků
@@ -69,7 +74,7 @@ public class SnakeController : MonoBehaviour
     }
 
     // Nastaví barvy podle vybraného skinu a hned je aplikuje na hlavu i tělo.
-    // customHeadId je připravené místo pro budoucí vlastní model hlavy (zatím se nepoužívá).
+    // customHeadId == "delta" zapne model postavy a chlupatý ocas (jen vzhled).
     public void ApplySkin(SkinData skin)
     {
         if (skin == null) return;
@@ -78,7 +83,57 @@ public class SnakeController : MonoBehaviour
         emissionColor = skin.emissionColor;
         headGlow = skin.headGlow;
         tailGlow = skin.bodyGlow;
+        bool wantDelta = !string.IsNullOrEmpty(skin.customHeadId) && skin.customHeadId == "delta";
+        if (wantDelta) EnableDeltaLook();
+        else DisableDeltaLook();
         UpdateLook();
+    }
+
+    void EnableDeltaLook()
+    {
+        deltaLook = true;
+        if (deltaGirl == null)
+        {
+            var prefab = Resources.Load<GameObject>("DeltaGirl");
+            if (prefab) deltaGirl = DeltaGirlCrawler.Attach(transform, prefab);
+            else Debug.LogWarning("[Snake3D] Chybí Resources/DeltaGirl.prefab – skin DELTA bez postavy.");
+        }
+        if (deltaGirl) deltaGirl.gameObject.SetActive(true);
+        SetDefaultHeadVisible(false);
+        // existující články dostanou srst a materiál ocasu
+        for (int i = 1; i < segments.Count; i++) StyleTailSegment(segments[i], true);
+    }
+
+    void DisableDeltaLook()
+    {
+        deltaLook = false;
+        if (deltaGirl) deltaGirl.gameObject.SetActive(false);
+        SetDefaultHeadVisible(true);
+        for (int i = 1; i < segments.Count; i++) StyleTailSegment(segments[i], false);
+    }
+
+    // Schová (nebo zase ukáže) hadí hlavu z primitiv. Šipka k jídlu a turbo stopa zůstávají.
+    void SetDefaultHeadVisible(bool vis)
+    {
+        foreach (var r in GetComponentsInChildren<Renderer>(true))
+        {
+            if (r is TrailRenderer) continue;
+            if (IsUnder(r.transform, "DeltaGirl")) continue;
+            if (IsUnder(r.transform, "FoodArrow")) continue;
+            if (IsUnder(r.transform, "BoostTrail")) continue;
+            if (IsUnder(r.transform, "FurHalo")) continue;
+            r.enabled = vis;
+        }
+    }
+
+    static bool IsUnder(Transform t, string name)
+    {
+        while (t != null)
+        {
+            if (t.name == name) return true;
+            t = t.parent;
+        }
+        return false;
     }
 
     void AddSegment(Vector2Int c)
@@ -91,6 +146,7 @@ public class SnakeController : MonoBehaviour
         var p = arena.CellToWorld(c);
         go.transform.position = p;
         cells.Add(c); segments.Add(go.transform); fromPos.Add(p); toPos.Add(p);
+        if (deltaLook) StyleTailSegment(go.transform, true);
     }
 
     public void Stop() => alive = false;
@@ -130,7 +186,19 @@ public class SnakeController : MonoBehaviour
                     p += side * Mathf.Sin(Time.time * 7f - i * 0.7f) * 0.07f * Mathf.Min(1f, i / 3f);
                 }
             }
-            segments[i].position = p;
+            if (deltaLook && i > 0)
+            {
+                // ocas táhne při zemi a články jsou jako zaoblené kapsle ve směru těla
+                float u = segments.Count > 2 ? (i - 1f) / (segments.Count - 2f) : 0f;
+                p.y = Mathf.Lerp(0.22f, 0.10f, u);
+                segments[i].position = p;
+                Vector3 along = (i > 0 ? (i - 1 < toPos.Count ? toPos[Mathf.Max(0, i - 1)] : p) - p : Vector3.forward);
+                along.y = 0;
+                if (along.sqrMagnitude < 0.0001f) along = new Vector3(dir.x, 0, dir.y);
+                if (along.sqrMagnitude > 0.0001f)
+                    segments[i].rotation = Quaternion.Slerp(segments[i].rotation, Quaternion.LookRotation(along.normalized), 12f * Time.deltaTime);
+            }
+            else segments[i].position = p;
         }
 
         // Hlava se plynule natáčí ve směru pohybu.
@@ -190,7 +258,35 @@ public class SnakeController : MonoBehaviour
     {
         if (block == null) block = new MaterialPropertyBlock();
         int n = segments.Count;
-        foreach (var sgm in segments) sgm.GetComponent<Renderer>().enabled = true;
+        if (deltaLook)
+        {
+            if (n > 0) SetDefaultHeadVisible(false);
+            for (int i = 1; i < n; i++)
+            {
+                float t = n > 2 ? (i - 1f) / (n - 2f) : 0f;       // 0 = u boků, 1 = špička
+                // tmavě fialovo-černý ocas, ke špičce světlejší fialová
+                Color c = Color.Lerp(new Color(0.06f, 0.02f, 0.10f), new Color(0.45f, 0.28f, 0.62f), t * t);
+                Color e = Color.Lerp(emissionColor * 0.35f, new Color(1.1f, 0.55f, 1.5f), t);
+                float glow = Mathf.Lerp(headGlow * 0.45f, tailGlow * 1.1f, t);
+                TintPart(segments[i], c, e, glow, false);
+                float rad = Mathf.Lerp(bodySize * 0.95f, tailSize * 0.42f, t);
+                segments[i].localScale = new Vector3(rad, rad, rad * Mathf.Lerp(1.35f, 0.85f, t));
+                var halo = segments[i].Find("FurHalo");
+                if (halo)
+                {
+                    halo.localScale = Vector3.one * 1.28f;
+                    TintPart(halo, c, e * 0.7f, glow * 0.5f, false);
+                    var hr = halo.GetComponent<Renderer>();
+                    if (hr) hr.enabled = true;
+                }
+            }
+            return;
+        }
+        foreach (var sgm in segments)
+        {
+            var r = sgm.GetComponent<Renderer>();
+            if (r) r.enabled = true;
+        }
         if (n > 0) TintPart(segments[0], headColor, emissionColor, headGlow, true);
         for (int i = 1; i < n; i++)
         {
@@ -201,6 +297,36 @@ public class SnakeController : MonoBehaviour
             TintPart(segments[i], c, e, glow, false);
             segments[i].localScale = Vector3.one * Mathf.Lerp(bodySize, tailSize, t);
         }
+    }
+
+    // Přepne článek těla na chlupatý ocas (nebo zpět na obyčejnou kouli).
+    void StyleTailSegment(Transform seg, bool fur)
+    {
+        if (!seg) return;
+        var halo = seg.Find("FurHalo");
+        if (fur)
+        {
+            if (tailMaterial)
+            {
+                var r = seg.GetComponent<Renderer>();
+                if (r) r.sharedMaterial = tailMaterial;
+            }
+            if (halo == null)
+            {
+                var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                go.name = "FurHalo";
+                Destroy(go.GetComponent<Collider>());
+                go.transform.SetParent(seg, false);
+                go.transform.localPosition = Vector3.zero;
+                go.transform.localRotation = Quaternion.identity;
+                go.transform.localScale = Vector3.one * 1.28f;
+                var r = go.GetComponent<Renderer>();
+                if (tailFurMaterial) r.sharedMaterial = tailFurMaterial;
+                halo = go.transform;
+            }
+            halo.gameObject.SetActive(true);
+        }
+        else if (halo) Destroy(halo.gameObject);
     }
 
     // Obarví renderer (u hlavy i čumák, oči a obočí nechá být).
@@ -231,17 +357,40 @@ public class SnakeController : MonoBehaviour
     void RainbowLook()
     {
         if (block == null) block = new MaterialPropertyBlock();
-        for (int i = 0; i < segments.Count; i++)
+        int start = deltaLook ? 1 : 0;
+        for (int i = start; i < segments.Count; i++)
         {
             var r = segments[i].GetComponent<Renderer>();
+            if (!r) continue;
             Color c = Color.HSVToRGB((Time.time * 0.8f + i * 0.07f) % 1f, 0.7f, 1f);
             r.GetPropertyBlock(block);
             block.SetColor(EmissionId, c * 2.2f);
             r.SetPropertyBlock(block);
+            var halo = segments[i].Find("FurHalo");
+            if (halo)
+            {
+                var hr = halo.GetComponent<Renderer>();
+                if (hr)
+                {
+                    hr.GetPropertyBlock(block);
+                    block.SetColor(EmissionId, c * 1.4f);
+                    hr.SetPropertyBlock(block);
+                }
+            }
         }
         // blikání v poslední sekundě = varování, že štít končí
         bool blink = shieldTimer < 1f && Mathf.Repeat(Time.time * 8f, 1f) < 0.5f;
-        for (int i = 0; i < segments.Count; i++) segments[i].GetComponent<Renderer>().enabled = !blink || i == 0;
+        for (int i = start; i < segments.Count; i++)
+        {
+            var r = segments[i].GetComponent<Renderer>();
+            if (r) r.enabled = !blink || i == 0;
+            var halo = segments[i].Find("FurHalo");
+            if (halo)
+            {
+                var hr = halo.GetComponent<Renderer>();
+                if (hr) hr.enabled = !blink;
+            }
+        }
     }
 
     bool HitsSelf(Vector2Int c)

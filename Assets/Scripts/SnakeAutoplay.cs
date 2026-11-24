@@ -45,6 +45,7 @@ public class SnakeAutoplay : MonoBehaviour
         shotDir = i >= 0 && i + 1 < args.Length ? args[i + 1] : Path.Combine(Application.dataPath, "..", "Screenshots");
         if (HasArg("-screenshots") && HasArg("-openskins")) StartCoroutine(ShotSkins());
         else if (HasArg("-screenshots") && ShotFoodKind() != null) StartCoroutine(ShotObjectiveFood());
+        else if (HasArg("-screenshots") && IsDeltaSkin()) StartCoroutine(ShotDelta());
         else if (HasArg("-screenshots")) { StartCoroutine(TakeShots()); StartCoroutine(WatchLevels()); }
         else if (HasArg("-openskins")) gm.OpenSkinMenu();
         else gm.BeginPlay(); // bez fotek rovnou hrajeme (přeskočí úvodní obrazovku)
@@ -193,6 +194,60 @@ public class SnakeAutoplay : MonoBehaviour
         // Cesta k jídlu neexistuje – vezmi aspoň nějaký bezpečný směr.
         foreach (var d in dirs) if (d != -snake.Direction && Free(head + d, body)) return d;
         return snake.Direction;
+    }
+
+    static bool IsDeltaSkin()
+    {
+        var s = SkinCatalog.Current();
+        return s != null && s.customHeadId == "delta";
+    }
+
+    // Krátké fotky skinu DELTA: detail postavy a hra s dlouhým ocasem.
+    IEnumerator ShotDelta()
+    {
+        Directory.CreateDirectory(shotDir);
+        yield return new WaitForSeconds(1.2f);
+        Shot("00_title.png");
+        yield return new WaitForSeconds(0.35f);
+        gm.BeginPlay();
+        if (snake) snake.Grow(16);
+        // necháme hada vyrůst, ale zastavíme ho před zdí (start je uprostřed, jde nahoru)
+        float step = snake ? snake.stepInterval : 0.16f;
+        yield return new WaitForSeconds(step * 9f + 0.35f);
+        if (snake) snake.Stop();
+        yield return new WaitForSeconds(0.2f);
+        Shot("02_midgame_tail.png");
+        yield return new WaitForSeconds(0.35f);
+        yield return DeltaCloseUp();
+        yield return new WaitForSeconds(0.3f);
+        Shot("03_long_tail.png");
+        yield return new WaitForSeconds(0.4f);
+        Application.Quit();
+    }
+
+    IEnumerator DeltaCloseUp()
+    {
+        var cam = Camera.main; var rig = cam ? cam.GetComponent<CameraRig>() : null;
+        if (!cam || !snake) yield break;
+        Vector3 p = cam.transform.position; Quaternion r = cam.transform.rotation;
+        if (rig) rig.enabled = false;
+        float oldScale = Time.timeScale; Time.timeScale = 0.08f;
+        Transform h = snake.transform;
+        // 3/4 záběr na postavu zepředu z boku
+        cam.transform.position = h.position + h.forward * 1.7f + h.right * 1.35f + Vector3.up * 1.55f;
+        cam.transform.LookAt(h.position + Vector3.up * 0.25f);
+        yield return new WaitForSecondsRealtime(0.45f);
+        Shot("01e_delta_closeup.png");
+        yield return new WaitForSecondsRealtime(0.3f);
+        // pohled mírně shora podél ocasu
+        cam.transform.position = h.position - h.forward * 0.4f + h.right * 0.35f + Vector3.up * 2.6f;
+        cam.transform.LookAt(h.position - h.forward * 2.2f + Vector3.up * 0.15f);
+        yield return new WaitForSecondsRealtime(0.45f);
+        Shot("01f_delta_tail_closeup.png");
+        yield return new WaitForSecondsRealtime(0.3f);
+        cam.transform.SetPositionAndRotation(p, r);
+        if (rig) rig.enabled = true;
+        Time.timeScale = oldScale;
     }
 
     IEnumerator TakeShots()

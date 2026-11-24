@@ -14,7 +14,7 @@ public class SkinData
     public float bodyGlow = 1f;    // síla záře na ocase
     public bool secret;            // tajný skin: odemkne se kódem
     public string unlockCode;      // tajný kód (porovnává se bez ohledu na velikost písmen)
-    // Háček pro později: vlastní model hlavy (např. anime postava). Zatím se nepoužívá.
+    // Vlastní model hlavy: u skinu DELTA je "delta" = anime postava + chlupatý ocas.
     public string customHeadId;
 }
 
@@ -62,7 +62,7 @@ public static class SkinCatalog
             emissionColor = new Color(0.7f, 0.1f, 1.4f),
             headGlow = 2.4f, bodyGlow = 1.6f,
             secret = true, unlockCode = "DELTA",
-            customHeadId = "delta" // připraveno pro budoucí model postavy
+            customHeadId = "delta" // model postavy (Resources/DeltaGirl) + chlupatý ocas
         },
     };
 
