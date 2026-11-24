@@ -1,0 +1,23 @@
+Tda-style Hatsune Miku (VRM conversion)
+---------------------------------------
+Soubor ve hře: TdaMiku.fbx + Textures/ (převedeno z VRM, bez morph targetů,
+textury zmenšené, pro školní nekomerční projekt).
+
+Původní 3D model:
+  Tda式初音ミクV4X  – modelace: Tda
+  Postava Hatsune Miku: Crypton Future Media, INC. ©
+  https://piapro.jp/license/pcl/summary  (Piapro Character License)
+
+Staženo bez přihlášení z veřejného GitHub repozitáře:
+  https://github.com/outrine/HatsuneMiku_VRM_Model
+  soubor Model_Miku_V2.7z → Miku4.vrm (title v metadatech VRM: Tda式初音ミクV4X)
+  Konverze do VRM a nahrání: Jjinomu (uvedeno v README daného repozitáře).
+  README repozitáře: „You are free to use this model in your projects,
+  but please give credit to the original creators.“ Zakázáno použití ve VRChat.
+
+VRM meta (může být nastaveno konvertorem, nemusí odpovídat původní licenci Tda):
+  licenseName=CC0, allowedUserName=Everyone, commercialUssageName=Allow
+
+Tato hra je nekomerční školní projekt. Uvádíme autory výše. Model se
+nepoužívá ve VRChat a nepřehlasujeme ho jako vlastní tvorbu.
+

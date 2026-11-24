@@ -32,6 +32,14 @@ public static class SnakeBatch
         BuildWebGL();
     }
 
+    // 2d) Scéna + Linux + WebGL v jednom spuštění (šetří cykly).
+    public static void BuildSceneLinuxAndWebGL()
+    {
+        SnakeSceneSetup.BuildScene();
+        BuildLinux();
+        BuildWebGL();
+    }
+
     // 3) Sestaví hru pro Linux do složky Build/Linux.
     public static void BuildLinux()
     {

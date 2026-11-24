@@ -420,6 +420,8 @@ public static class SnakeSceneSetup
         var rig = cam.gameObject.AddComponent<CameraRig>();
         rig.target = head.transform;
         gm.cameraRig = rig;
+        snake.cameraRig = rig;
+        rig.onViewChanged += snake.ApplyCameraView;
 
         // Světlo a mlha: slabé modravé světlo, ať vynikne záře
         var sun = Object.FindObjectOfType<Light>();
@@ -570,8 +572,8 @@ public static class SnakeSceneSetup
         var press = Text(title.transform, "PressStart", new Vector2(0.5f, 0.5f), new Vector2(0, -150), TextAlignmentOptions.Center, 52, fontCyan);
         press.rectTransform.sizeDelta = new Vector2(1400, 90); press.text = "stiskni MEZERNÍK";
         var help = Text(title.transform, "Help", new Vector2(0.5f, 0.5f), new Vector2(0, -255), TextAlignmentOptions.Center, 32, fontCyan);
-        help.rectTransform.sizeDelta = new Vector2(1600, 60);
-        help.text = "Šipky / WASD = řízení    K = skiny";
+        help.rectTransform.sizeDelta = new Vector2(1700, 90);
+        help.text = "Šipky / WASD = řízení    C = kamera (přehled / 3. osoba / 1. osoba)    K = skiny";
         // legenda jídla: vlastní materiál bez záře, jinak by barvy vybledly do bíla
         var legend = Text(title.transform, "FoodLegend", new Vector2(0.5f, 0.5f), new Vector2(0, -315), TextAlignmentOptions.Center, 36, fontPlain);
         legend.rectTransform.sizeDelta = new Vector2(1700, 60);

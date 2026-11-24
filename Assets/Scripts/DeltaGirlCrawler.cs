@@ -18,7 +18,7 @@ public class DeltaGirlCrawler : MonoBehaviour
     Quaternion hips0, spine0, chest0, upperChest0, neck0, head0;
     Quaternion lUpper0, lLower0, rUpper0, rLower0;
     Quaternion lUpperLeg0, lLowerLeg0, rUpperLeg0, rLowerLeg0;
-    bool mapped, hairScaled;
+    bool mapped, hairScaled, mmd;
     int fitFrames = 4;
 
     public static DeltaGirlCrawler Attach(Transform headParent, GameObject prefab, string lookId)
@@ -75,31 +75,53 @@ public class DeltaGirlCrawler : MonoBehaviour
 
     static Quaternion Rest(Transform t) => t ? t.localRotation : Quaternion.identity;
 
-    void MapBones()
+    // Světová pozice očí pro kameru v 1. osobě.
+    public Vector3 EyeWorldPosition()
     {
-        hips = FindBone("J_Bip_C_Hips");
-        spine = FindBone("J_Bip_C_Spine");
-        chest = FindBone("J_Bip_C_Chest");
-        upperChest = FindBone("J_Bip_C_UpperChest");
-        neck = FindBone("J_Bip_C_Neck");
-        head = FindBone("J_Bip_C_Head");
-        lUpper = FindBone("J_Bip_L_UpperArm");
-        lLower = FindBone("J_Bip_L_LowerArm");
-        rUpper = FindBone("J_Bip_R_UpperArm");
-        rLower = FindBone("J_Bip_R_LowerArm");
-        lUpperLeg = FindBone("J_Bip_L_UpperLeg");
-        lLowerLeg = FindBone("J_Bip_L_LowerLeg");
-        rUpperLeg = FindBone("J_Bip_R_UpperLeg");
-        rLowerLeg = FindBone("J_Bip_R_LowerLeg");
-        mapped = hips && head && lUpper && rUpper;
-        if (!mapped)
-            Debug.LogWarning("[Snake3D] DeltaGirl: nenašel jsem kosti VRoid (J_Bip_…). Postava se nenapozicuje.");
+        Vector3 fwd = transform.parent ? transform.parent.forward : transform.forward;
+        fwd.y = 0f;
+        if (fwd.sqrMagnitude < 1e-6f) fwd = Vector3.forward;
+        fwd.Normalize();
+        if (head) return head.position + Vector3.up * 0.07f + fwd * 0.10f;
+        return transform.position + Vector3.up * 1.5f + fwd * 0.12f;
     }
 
-    Transform FindBone(string n)
+    public void SetRenderersVisible(bool vis)
     {
-        foreach (var t in GetComponentsInChildren<Transform>(true))
-            if (t.name == n) return t;
+        foreach (var r in GetComponentsInChildren<Renderer>(true))
+            r.enabled = vis;
+    }
+
+    void MapBones()
+    {
+        hips = FindBone("J_Bip_C_Hips", "腰");
+        spine = FindBone("J_Bip_C_Spine", "上半身");
+        chest = FindBone("J_Bip_C_Chest", "上半身");
+        upperChest = FindBone("J_Bip_C_UpperChest", "上半身2");
+        neck = FindBone("J_Bip_C_Neck", "首");
+        head = FindBone("J_Bip_C_Head", "頭");
+        lUpper = FindBone("J_Bip_L_UpperArm", "左腕");
+        lLower = FindBone("J_Bip_L_LowerArm", "左ひじ");
+        rUpper = FindBone("J_Bip_R_UpperArm", "右腕");
+        rLower = FindBone("J_Bip_R_LowerArm", "右ひじ");
+        lUpperLeg = FindBone("J_Bip_L_UpperLeg", "左足");
+        lLowerLeg = FindBone("J_Bip_L_LowerLeg", "左ひざ");
+        rUpperLeg = FindBone("J_Bip_R_UpperLeg", "右足");
+        rLowerLeg = FindBone("J_Bip_R_LowerLeg", "右ひざ");
+        mmd = hips && (hips.name == "腰" || hips.name == "センター" || head && head.name == "頭");
+        mapped = hips && head;
+        if (!mapped)
+            Debug.LogWarning("[Snake3D] DeltaGirl: nenašel jsem kosti postavy. Postava se nenapozicuje.");
+    }
+
+    Transform FindBone(params string[] names)
+    {
+        var all = GetComponentsInChildren<Transform>(true);
+        foreach (var n in names)
+        {
+            foreach (var t in all)
+                if (t.name == n) return t;
+        }
         return null;
     }
 
@@ -173,17 +195,26 @@ public class DeltaGirlCrawler : MonoBehaviour
         if (hips) hips.localRotation = hips0 * Quaternion.Euler(0f, sway * 4f, 0f);
 
         // Uvolněné paže, lehký pohyb (ne plazení po břiše).
-        // Výchozí T-pose má paže vodorovně – spustíme je podél těla (opačné Z než při zdvižení).
-        if (lUpper) lUpper.localRotation = lUpper0 * Quaternion.Euler(8f, 6f, -70f + 6f * sway);
-        if (lLower) lLower.localRotation = lLower0 * Quaternion.Euler(0f, 0f, 16f);
-        if (rUpper) rUpper.localRotation = rUpper0 * Quaternion.Euler(8f, -6f, 70f - 6f * sway);
-        if (rLower) rLower.localRotation = rLower0 * Quaternion.Euler(0f, 0f, -14f);
-
-        // Nohy dozadu do ocasu, ať neprocházejí podlahou.
-        if (lUpperLeg) lUpperLeg.localRotation = lUpperLeg0 * Quaternion.Euler(-85f, 6f, 8f);
-        if (rUpperLeg) rUpperLeg.localRotation = rUpperLeg0 * Quaternion.Euler(-85f, -6f, -8f);
-        if (lLowerLeg) lLowerLeg.localRotation = lLowerLeg0 * Quaternion.Euler(18f, 0f, 0f);
-        if (rLowerLeg) rLowerLeg.localRotation = rLowerLeg0 * Quaternion.Euler(18f, 0f, 0f);
+        if (mmd)
+        {
+            // MMD osy se liší – jen malý pohyb, ať se mesh nerozpadne.
+            if (lUpper) lUpper.localRotation = lUpper0 * Quaternion.Euler(0f, 0f, 18f + 4f * sway);
+            if (rUpper) rUpper.localRotation = rUpper0 * Quaternion.Euler(0f, 0f, -18f - 4f * sway);
+            if (lUpperLeg) lUpperLeg.localRotation = lUpperLeg0 * Quaternion.Euler(-40f, 0f, 0f);
+            if (rUpperLeg) rUpperLeg.localRotation = rUpperLeg0 * Quaternion.Euler(-40f, 0f, 0f);
+        }
+        else
+        {
+            // Výchozí T-pose má paže vodorovně – spustíme je podél těla.
+            if (lUpper) lUpper.localRotation = lUpper0 * Quaternion.Euler(8f, 6f, -70f + 6f * sway);
+            if (lLower) lLower.localRotation = lLower0 * Quaternion.Euler(0f, 0f, 16f);
+            if (rUpper) rUpper.localRotation = rUpper0 * Quaternion.Euler(8f, -6f, 70f - 6f * sway);
+            if (rLower) rLower.localRotation = rLower0 * Quaternion.Euler(0f, 0f, -14f);
+            if (lUpperLeg) lUpperLeg.localRotation = lUpperLeg0 * Quaternion.Euler(-85f, 6f, 8f);
+            if (rUpperLeg) rUpperLeg.localRotation = rUpperLeg0 * Quaternion.Euler(-85f, -6f, -8f);
+            if (lLowerLeg) lLowerLeg.localRotation = lLowerLeg0 * Quaternion.Euler(18f, 0f, 0f);
+            if (rLowerLeg) rLowerLeg.localRotation = rLowerLeg0 * Quaternion.Euler(18f, 0f, 0f);
+        }
     }
 
     int _dbg;

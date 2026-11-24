@@ -24,8 +24,11 @@ public class SnakeController : MonoBehaviour
     public TrailRenderer boostTrail;                       // svítící stopa při zrychlení
     public Material tailMaterial;                          // materiál chlupatého ocasu (DELTA / MIKU)
     public Material tailFurMaterial;                       // měkká "srst" kolem článků ocasu
+    public CameraRig cameraRig;                            // přepínání pohledu (C)
 
     DeltaGirlCrawler character;
+    SnakeTailTube tailTube;
+    bool firstPersonHide;
     string characterLook; // "delta" / "miku" / null
     bool HasCharacter => !string.IsNullOrEmpty(characterLook);
 
@@ -50,6 +53,12 @@ public class SnakeController : MonoBehaviour
     public bool IsShielded => shieldTimer > 0;   // má had štít? (projede překážkou i sám sebou)
     public float ShieldLeft => shieldTimer;
     public float BoostLeft => speedBoostTimer;   // zbývající čas turba
+
+    void Start()
+    {
+        if (!cameraRig) cameraRig = FindObjectOfType<CameraRig>();
+        if (cameraRig) cameraRig.onViewChanged += ApplyCameraView;
+    }
 
     // Zapne štít na "seconds" sekund.
     public void Shield(float seconds) => shieldTimer = seconds;
@@ -221,16 +230,71 @@ public class SnakeController : MonoBehaviour
         // Hlava se plynule natáčí ve směru pohybu.
         var look = Quaternion.LookRotation(new Vector3(dir.x, 0, dir.y));
         transform.rotation = Quaternion.Slerp(transform.rotation, look, 15f * Time.deltaTime);
+        RebuildTailTube();
     }
+
+    public bool UsesRelativeTurn => cameraRig && cameraRig.View != CameraView.Overview;
 
     void ReadInput()
     {
         Vector2Int d = nextDir;
-        if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow)) d = Vector2Int.up;
-        else if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow)) d = Vector2Int.down;
-        else if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow)) d = Vector2Int.left;
-        else if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow)) d = Vector2Int.right;
+        bool rel = UsesRelativeTurn;
+        // v 3. / 1. osobě: vlevo/vpravo zatáčí vzhledem k aktuálnímu směru hada
+        Vector2Int fwd = dir;
+        Vector2Int left = new Vector2Int(-fwd.y, fwd.x);
+        Vector2Int right = new Vector2Int(fwd.y, -fwd.x);
+        if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow)) d = rel ? fwd : Vector2Int.up;
+        else if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow)) d = rel ? -fwd : Vector2Int.down;
+        else if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow)) d = rel ? left : Vector2Int.left;
+        else if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow)) d = rel ? right : Vector2Int.right;
         if (d != -dir) nextDir = d; // nelze se otočit o 180°
+    }
+
+    public void ApplyCameraView(CameraView view)
+    {
+        bool fp = view == CameraView.FirstPerson;
+        firstPersonHide = fp;
+        if (fp)
+        {
+            if (HasCharacter && character) character.SetRenderersVisible(false);
+            else SetDefaultHeadVisible(false);
+        }
+        else
+        {
+            if (HasCharacter && character)
+            {
+                character.SetRenderersVisible(true);
+                SetDefaultHeadVisible(false);
+            }
+            else SetDefaultHeadVisible(true);
+        }
+        UpdateLook();
+    }
+
+    void RebuildTailTube()
+    {
+        if (tailTube == null)
+        {
+            var go = new GameObject("TailTube");
+            go.transform.SetParent(transform, false);
+            tailTube = go.AddComponent<SnakeTailTube>();
+        }
+        int n = segments.Count;
+        int start = HasCharacter ? 2 : 1; // hlava (a u postavy sukně) zůstane mimo trubku
+        if (n - start < 2) { tailTube.Hide(); return; }
+        var pts = new System.Collections.Generic.List<Vector3>(n);
+        var rads = new System.Collections.Generic.List<float>(n);
+        for (int i = start; i < n; i++)
+        {
+            pts.Add(segments[i].position);
+            float s = segments[i].localScale.x;
+            rads.Add(Mathf.Max(0.08f, s * 0.52f));
+        }
+        var mat = (HasCharacter && tailMaterial) ? tailMaterial : bodyMaterial;
+        Color emit = emissionColor * (HasCharacter ? 0.7f : 1f);
+        if (HasCharacter && characterLook == "miku") emit = new Color(0.25f, 1.1f, 1.0f);
+        else if (HasCharacter) emit = new Color(0.7f, 0.35f, 1.1f);
+        tailTube.Rebuild(pts, rads, mat, emit);
     }
 
     void Step()
@@ -294,7 +358,8 @@ public class SnakeController : MonoBehaviour
                 segments[i].localScale = new Vector3(rad, rad, rad * Mathf.Lerp(1.35f, 0.85f, t));
                 var halo = segments[i].Find("FurHalo");
                 // první článek je u sukně (mezi hlavou a boky) – schováme ho, ať netrčí dírou ve šatech
-                bool hide = i == 1;
+                // trubka nahradí tečky; 1. článek je pod sukní
+                bool hide = i >= 1;
                 var sr = segments[i].GetComponent<Renderer>();
                 if (sr) sr.enabled = !hide;
                 if (halo)
@@ -302,9 +367,10 @@ public class SnakeController : MonoBehaviour
                     halo.localScale = Vector3.one * 1.28f;
                     TintPart(halo, c, e * 0.7f, glow * 0.5f, false);
                     var hr = halo.GetComponent<Renderer>();
-                    if (hr) hr.enabled = !hide;
+                    if (hr) hr.enabled = false;
                 }
             }
+            RebuildTailTube();
             return;
         }
         foreach (var sgm in segments)
@@ -321,7 +387,11 @@ public class SnakeController : MonoBehaviour
             float glow = Mathf.Lerp(headGlow, tailGlow, t);
             TintPart(segments[i], c, e, glow, false);
             segments[i].localScale = Vector3.one * Mathf.Lerp(bodySize, tailSize, t);
+            // tělo kreslí trubka, koule schováme (pozice zůstávají)
+            var r = segments[i].GetComponent<Renderer>();
+            if (r) r.enabled = false;
         }
+        if (firstPersonHide) SetDefaultHeadVisible(false);
     }
 
     // Přepne článek těla na chlupatý ocas (nebo zpět na obyčejnou kouli).

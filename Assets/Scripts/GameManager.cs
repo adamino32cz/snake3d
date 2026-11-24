@@ -229,10 +229,12 @@ public class GameManager : MonoBehaviour
             if (chosen >= u) chosen = level;
             if (chosen != level) SelectLevel(chosen);
             if (Input.GetKeyDown(KeyCode.K)) { OpenSkinMenu(); return; }
+            if (Input.GetKeyDown(KeyCode.C)) CycleCamera();
             if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return)) BeginPlay();
             return;
         }
         if (state == State.Skins) { SkinMenuInput(); return; }
+        if (Input.GetKeyDown(KeyCode.C)) CycleCamera();
         if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.P))
         {
             if (state == State.Playing) SetPaused(true);
@@ -338,6 +340,38 @@ public class GameManager : MonoBehaviour
         r.SetPropertyBlock(block);
     }
 
+    void CycleCamera()
+    {
+        if (!cameraRig) return;
+        if (state == State.Title) return; // na úvodu kamera krouží
+        cameraRig.CycleView();
+        if (snake) snake.ApplyCameraView(cameraRig.View);
+        if (hintText)
+        {
+            string extra = cameraRig.View == CameraView.Overview
+                ? ""
+                : "  (vlevo/vpravo zatáčí podle hada)";
+            hintText.text = "Kamera: " + CameraRig.ViewLabel(cameraRig.View) + extra;
+            hintText.alpha = 1f;
+            StopCoroutine(nameof(FadeCamHint));
+            StartCoroutine(FadeCamHint());
+        }
+    }
+
+    System.Collections.IEnumerator FadeCamHint()
+    {
+        yield return new WaitForSecondsRealtime(2.2f);
+        if (!hintText) yield break;
+        float u = 0f;
+        while (u < 0.4f && hintText)
+        {
+            u += Time.unscaledDeltaTime;
+            hintText.alpha = 1f - u / 0.4f;
+            yield return null;
+        }
+        if (hintText) { hintText.text = ""; hintText.alpha = 1f; }
+    }
+
     // Krátká nápověda při první hře: 3 tipy po sobě, každý 3 s.
     System.Collections.IEnumerator TutorialRoutine()
     {
@@ -345,6 +379,7 @@ public class GameManager : MonoBehaviour
         {
             "<color=#80FFFF>Šipky / WASD</color> = zatáčení. Sbírej jídlo a rosteš!",
             "Nenarážej do <color=#FF6080>zdí</color>, do <color=#FF9040>pil</color> ani do sebe.",
+            "<color=#80FFFF>C</color> = kamera (přehled / 3. osoba / 1. osoba). V 3. a 1. osobě vlevo/vpravo zatáčí podle hada.",
             "Barevná jídla dávají vylepšení. <color=#FFE14D>Esc</color> = pauza.",
         };
         foreach (var tip in tips)

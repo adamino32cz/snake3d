@@ -2,7 +2,7 @@
 
 ## ▶ Hrát v prohlížeči: https://adamino32cz.github.io/snake3d/
 
-Funguje v Chrome, Edge a Firefoxu na počítači (Safari na Macu by mělo také). Načtení poprvé trvá chvíli (stahuje se cca desítky MB), potom se hra ukládá do mezipaměti prohlížeče. Ovládání: šipky / WASD, pauza **P** (Esc v prohlížeči jen ukončí celou obrazovku).
+Funguje v Chrome, Edge a Firefoxu na počítači (Safari na Macu by mělo také). Načtení poprvé trvá chvíli (stahuje se cca desítky MB), potom se hra ukládá do mezipaměti prohlížeče. Ovládání: šipky / WASD (v pohledu shora světové směry; v 3. a 1. osobě vlevo/vpravo zatáčí podle aktuálního směru hada), **C** přepíná kameru (přehled / 3. osoba / 1. osoba), pauza **P** (Esc v prohlížeči jen ukončí celou obrazovku).
 
 Kód projektu: https://github.com/adamino32cz/snake3d – otevři složku v Unity Hubu (Unity 2022.3.62f3).
 
@@ -118,7 +118,9 @@ Barvy hada (hlava, tělo, záře) bere `SnakeController` z katalogu v `Assets/Sc
 
 Tajný skin **DELTA** (kód `DELTA`, test: `-skin delta`) nahradí hadí hlavu anime postavou (VRoid HairSample_Female, viz licence níže) – kočičí dívka s tmavými culíky a původními barvami modelu. Postava je vzpřímená (lamia: trup stojí, nohy jsou schované do ocasu), vysoká zhruba tři políčka, a články těla hada jsou její rostoucí tmavě fialovo-černý chlupatý ocas, který plynule navazuje na boky, ke špičce se zužuje a zesvětluje.
 
-Druhý tajný skin **MIKU** (kód `MIKU`, test: `-skin miku`) používá tentýž CC0 model, jen přebarvený: tyrkysové culíky, tmavě šedé šaty s tyrkysovými lemy a tmavý ocas s tyrkysovým okrajem. Žádný oficiální model Hatsune Miku se nepoužívá.
+Druhý tajný skin **MIKU** (kód `MIKU`, test: `-skin miku`) používá model Tda-style Hatsune Miku (V4X), stažený bez přihlášení z veřejného GitHubu (viz licence níže). Stejné lamia nastavení (vzpřímený trup, tyrkysový ocas). Postava Hatsune Miku je dílo Crypton Future Media (Piapro Character License), modelace Tda, konverze VRM: Jjinomu.
+
+Klávesa **C** přepíná tři pohledy kamery (funguje u všech skinů): výchozí přehled shora, 3. osoba (za a nad hlavou, plynule sleduje směr pohybu) a 1. osoba (z hlavy dopředu, model hlavy se skryje). V 3. a 1. osobě šipka/A/D zatáčí relativně ke směru hada; v přehledu zůstává ovládání podle světových stran. Tělo hada je vizuálně spojitá trubka, ne řada teček.
 
 Kolize a ovládání zůstávají stejné. Ostatní skiny (Neon, Ohnivý, Ledový, Zlatý) se nezměnily. Model je v `Assets/Models/DeltaGirl/` (FBX + zmenšené textury), původní textury DELTA v `Textures/`, přebarvené textury MIKU v `TexturesMiku/`, prefaby v `Assets/Resources/DeltaGirl.prefab` a `Assets/Resources/MikuGirl.prefab`.
 
@@ -165,9 +167,10 @@ Všechny 3D modely jsou zdarma s licencí **CC0** (public domain) – smí se po
 |---|---|---|---|---|
 | Food Kit (2.0) | Kenney (www.kenney.nl) | https://kenney.nl/assets/food-kit | CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/) | jablko, houba, plechovka (soda-can), šálek kávy (cup-coffee) |
 | Platformer Kit (4.1) | Kenney (www.kenney.nl) | https://kenney.nl/assets/platformer-kit | CC0 1.0 | hvězda (star), srdce (heart), kotoučová pila (saw) |
-| HairSample_Female | VRoid ukázkový model (UniGLTF-1.28) | VRM meta: title HairSample_Female | CC0 1.0 (v metadatech VRM: licenseName=CC0, použití všemi, komerční použití povoleno) | tajné skiny DELTA (původní vzhled, kočičí uši) a MIKU (přebarvené textury téhož modelu: tyrkysové culíky, tmavé šaty). Převedeno do FBX, textury 512–1024 px. Oficiální model Hatsune Miku se nepoužívá. |
+| HairSample_Female | VRoid ukázkový model (UniGLTF-1.28) | VRM meta: title HairSample_Female | CC0 1.0 (v metadatech VRM: licenseName=CC0) | tajný skin DELTA: postava s tmavými culíky a kočičíma ušima (FBX, textury 512–1024 px) |
+| Tda式初音ミクV4X | modelace Tda; VRM konverze Jjinomu; postava Crypton Future Media | https://github.com/outrine/HatsuneMiku_VRM_Model (Model_Miku_V2.7z, staženo bez přihlášení) | Piapro Character License (postava) + podmínky autora modelu (credit, nepoužívat ve VRChat). VRM meta uvádí CC0, původní Tda licence tím nemusí být nahrazena. Nekomérční školní použití, autoři uvedeni. | tajný skin MIKU: Tda-style Hatsune Miku, FBX bez morphů, textury 512–1024 px. |
 
-Licenční soubory jsou přiložené v `Assets/Models/KenneyFoodKit/License.txt`, `Assets/Models/KenneyPlatformerKit/License.txt` a `Assets/Models/DeltaGirl/License.txt`.
+Licenční soubory jsou přiložené v `Assets/Models/KenneyFoodKit/License.txt`, `Assets/Models/KenneyPlatformerKit/License.txt`, `Assets/Models/DeltaGirl/License.txt` a `Assets/Models/TdaMiku/License.txt`.
 Zvuky a hudbu jsme vyrobili sami programem (`Tools/generate_audio.py`), písmo LiberationSans je součástí TextMesh Pro (licence SIL OFL).
 
 **Tip:** modely Kenney mají plochy s jedinou UV souřadnicí. Proto mají v importu vypnuté **tangenty** (jinak vznikají chybné pixely „NaN“, které bloom roztáhne do bílé skvrny) – nastavuje to `SnakeSceneSetup` automaticky.

@@ -223,8 +223,36 @@ public class SnakeAutoplay : MonoBehaviour
         yield return CharacterCloseUp(id);
         yield return new WaitForSeconds(0.3f);
         Shot("03_long_tail.png");
-        yield return new WaitForSeconds(0.4f);
+        yield return new WaitForSeconds(0.35f);
+        yield return ShotCameraModes();
+        yield return new WaitForSeconds(0.3f);
         Application.Quit();
+    }
+
+    IEnumerator ShotCameraModes()
+    {
+        var cam = Camera.main;
+        var rig = cam ? cam.GetComponent<CameraRig>() : null;
+        if (!rig || !snake) yield break;
+        rig.enabled = true;
+        Time.timeScale = 1f;
+        rig.SetView(CameraView.Overview);
+        snake.ApplyCameraView(CameraView.Overview);
+        yield return new WaitForSeconds(0.35f);
+        Shot("04_cam_overview.png");
+        yield return new WaitForSeconds(0.25f);
+        rig.SetView(CameraView.ThirdPerson);
+        snake.ApplyCameraView(CameraView.ThirdPerson);
+        yield return new WaitForSeconds(0.7f);
+        Shot("05_cam_third.png");
+        yield return new WaitForSeconds(0.25f);
+        rig.SetView(CameraView.FirstPerson);
+        snake.ApplyCameraView(CameraView.FirstPerson);
+        yield return new WaitForSeconds(0.55f);
+        Shot("06_cam_first.png");
+        yield return new WaitForSeconds(0.2f);
+        rig.SetView(CameraView.Overview);
+        snake.ApplyCameraView(CameraView.Overview);
     }
 
     IEnumerator CharacterCloseUp(string id)
