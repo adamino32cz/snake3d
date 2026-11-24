@@ -22,11 +22,12 @@ public class SnakeController : MonoBehaviour
     public float tailSize = 0.5f;                          // velikost poslední kuličky
     public bool smoothMovement = true;                     // plynulý pohyb mezi políčky
     public TrailRenderer boostTrail;                       // svítící stopa při zrychlení
-    public Material tailMaterial;                          // materiál chlupatého ocasu (DELTA)
+    public Material tailMaterial;                          // materiál chlupatého ocasu (DELTA / MIKU)
     public Material tailFurMaterial;                       // měkká "srst" kolem článků ocasu
 
-    DeltaGirlCrawler deltaGirl;
-    bool deltaLook;
+    DeltaGirlCrawler character;
+    string characterLook; // "delta" / "miku" / null
+    bool HasCharacter => !string.IsNullOrEmpty(characterLook);
 
     readonly List<Vector2Int> cells = new List<Vector2Int>();   // buňky hada (0 = hlava)
     readonly List<Transform> segments = new List<Transform>();  // 3D objekty článků
@@ -74,7 +75,7 @@ public class SnakeController : MonoBehaviour
     }
 
     // Nastaví barvy podle vybraného skinu a hned je aplikuje na hlavu i tělo.
-    // customHeadId == "delta" zapne model postavy a chlupatý ocas (jen vzhled).
+    // customHeadId ("delta" / "miku") zapne model postavy a chlupatý ocas (jen vzhled).
     public void ApplySkin(SkinData skin)
     {
         if (skin == null) return;
@@ -83,31 +84,43 @@ public class SnakeController : MonoBehaviour
         emissionColor = skin.emissionColor;
         headGlow = skin.headGlow;
         tailGlow = skin.bodyGlow;
-        bool wantDelta = !string.IsNullOrEmpty(skin.customHeadId) && skin.customHeadId == "delta";
-        if (wantDelta) EnableDeltaLook();
-        else DisableDeltaLook();
+        if (!string.IsNullOrEmpty(skin.customHeadId)) EnableCharacterLook(skin.customHeadId);
+        else DisableCharacterLook();
         UpdateLook();
     }
 
-    void EnableDeltaLook()
+    void EnableCharacterLook(string lookId)
     {
-        deltaLook = true;
-        if (deltaGirl == null)
+        characterLook = lookId;
+        foreach (var c in GetComponentsInChildren<DeltaGirlCrawler>(true))
+            c.gameObject.SetActive(c.lookId == lookId);
+
+        character = null;
+        foreach (var c in GetComponentsInChildren<DeltaGirlCrawler>(true))
+            if (c.lookId == lookId) { character = c; break; }
+
+        if (character == null)
         {
-            var prefab = Resources.Load<GameObject>("DeltaGirl");
-            if (prefab) deltaGirl = DeltaGirlCrawler.Attach(transform, prefab);
-            else Debug.LogWarning("[Snake3D] Chybí Resources/DeltaGirl.prefab – skin DELTA bez postavy.");
+            string res = lookId == "miku" ? "MikuGirl" : "DeltaGirl";
+            var prefab = Resources.Load<GameObject>(res);
+            if (prefab) character = DeltaGirlCrawler.Attach(transform, prefab, lookId);
+            else Debug.LogWarning("[Snake3D] Chybí Resources/" + res + ".prefab – skin " + lookId + " bez postavy.");
         }
-        if (deltaGirl) deltaGirl.gameObject.SetActive(true);
+        else
+        {
+            character.gameObject.SetActive(true);
+            character.FitToHead();
+        }
         SetDefaultHeadVisible(false);
-        // existující články dostanou srst a materiál ocasu
         for (int i = 1; i < segments.Count; i++) StyleTailSegment(segments[i], true);
     }
 
-    void DisableDeltaLook()
+    void DisableCharacterLook()
     {
-        deltaLook = false;
-        if (deltaGirl) deltaGirl.gameObject.SetActive(false);
+        characterLook = null;
+        foreach (var c in GetComponentsInChildren<DeltaGirlCrawler>(true))
+            c.gameObject.SetActive(false);
+        character = null;
         SetDefaultHeadVisible(true);
         for (int i = 1; i < segments.Count; i++) StyleTailSegment(segments[i], false);
     }
@@ -119,6 +132,7 @@ public class SnakeController : MonoBehaviour
         {
             if (r is TrailRenderer) continue;
             if (IsUnder(r.transform, "DeltaGirl")) continue;
+            if (IsUnder(r.transform, "MikuGirl")) continue;
             if (IsUnder(r.transform, "FoodArrow")) continue;
             if (IsUnder(r.transform, "BoostTrail")) continue;
             if (IsUnder(r.transform, "FurHalo")) continue;
@@ -146,7 +160,7 @@ public class SnakeController : MonoBehaviour
         var p = arena.CellToWorld(c);
         go.transform.position = p;
         cells.Add(c); segments.Add(go.transform); fromPos.Add(p); toPos.Add(p);
-        if (deltaLook) StyleTailSegment(go.transform, true);
+        if (HasCharacter) StyleTailSegment(go.transform, true);
     }
 
     public void Stop() => alive = false;
@@ -183,14 +197,17 @@ public class SnakeController : MonoBehaviour
                 if (along.sqrMagnitude > 0.001f)
                 {
                     Vector3 side = Vector3.Cross(Vector3.up, along.normalized);
-                    p += side * Mathf.Sin(Time.time * 7f - i * 0.7f) * 0.07f * Mathf.Min(1f, i / 3f);
+                    float wave = 0.07f * Mathf.Min(1f, i / 3f);
+                    // u postavy první články skoro bez vlny, ať ocas plynule navazuje na boky
+                    if (HasCharacter) wave *= Mathf.SmoothStep(0f, 1f, (i - 1f) / 3f);
+                    p += side * Mathf.Sin(Time.time * 7f - i * 0.7f) * wave;
                 }
             }
-            if (deltaLook && i > 0)
+            if (HasCharacter && i > 0)
             {
                 // ocas táhne při zemi a články jsou jako zaoblené kapsle ve směru těla
                 float u = segments.Count > 2 ? (i - 1f) / (segments.Count - 2f) : 0f;
-                p.y = Mathf.Lerp(0.22f, 0.10f, u);
+                p.y = Mathf.Lerp(0.48f, 0.14f, u); // u boků výš, ať ocas navazuje na sukni
                 segments[i].position = p;
                 Vector3 along = (i > 0 ? (i - 1 < toPos.Count ? toPos[Mathf.Max(0, i - 1)] : p) - p : Vector3.forward);
                 along.y = 0;
@@ -258,26 +275,34 @@ public class SnakeController : MonoBehaviour
     {
         if (block == null) block = new MaterialPropertyBlock();
         int n = segments.Count;
-        if (deltaLook)
+        if (HasCharacter)
         {
             if (n > 0) SetDefaultHeadVisible(false);
+            bool miku = characterLook == "miku";
+            Color root = miku ? new Color(0.05f, 0.07f, 0.08f) : new Color(0.06f, 0.02f, 0.10f);
+            Color tip  = miku ? new Color(0.12f, 0.62f, 0.58f) : new Color(0.45f, 0.28f, 0.62f);
+            Color etip = miku ? new Color(0.35f, 1.4f, 1.25f) : new Color(1.1f, 0.55f, 1.5f);
             for (int i = 1; i < n; i++)
             {
                 float t = n > 2 ? (i - 1f) / (n - 2f) : 0f;       // 0 = u boků, 1 = špička
-                // tmavě fialovo-černý ocas, ke špičce světlejší fialová
-                Color c = Color.Lerp(new Color(0.06f, 0.02f, 0.10f), new Color(0.45f, 0.28f, 0.62f), t * t);
-                Color e = Color.Lerp(emissionColor * 0.35f, new Color(1.1f, 0.55f, 1.5f), t);
+                // DELTA: fialovo-černý ocas; MIKU: tmavý s tyrkysovým lemem ke špičce
+                Color c = Color.Lerp(root, tip, t * t);
+                Color e = Color.Lerp(emissionColor * 0.35f, etip, t);
                 float glow = Mathf.Lerp(headGlow * 0.45f, tailGlow * 1.1f, t);
                 TintPart(segments[i], c, e, glow, false);
-                float rad = Mathf.Lerp(bodySize * 0.95f, tailSize * 0.42f, t);
+                float rad = Mathf.Lerp(bodySize * 1.05f, tailSize * 0.42f, t);
                 segments[i].localScale = new Vector3(rad, rad, rad * Mathf.Lerp(1.35f, 0.85f, t));
                 var halo = segments[i].Find("FurHalo");
+                // první článek je u sukně (mezi hlavou a boky) – schováme ho, ať netrčí dírou ve šatech
+                bool hide = i == 1;
+                var sr = segments[i].GetComponent<Renderer>();
+                if (sr) sr.enabled = !hide;
                 if (halo)
                 {
                     halo.localScale = Vector3.one * 1.28f;
                     TintPart(halo, c, e * 0.7f, glow * 0.5f, false);
                     var hr = halo.GetComponent<Renderer>();
-                    if (hr) hr.enabled = true;
+                    if (hr) hr.enabled = !hide;
                 }
             }
             return;
@@ -357,7 +382,7 @@ public class SnakeController : MonoBehaviour
     void RainbowLook()
     {
         if (block == null) block = new MaterialPropertyBlock();
-        int start = deltaLook ? 1 : 0;
+        int start = HasCharacter ? 1 : 0;
         for (int i = start; i < segments.Count; i++)
         {
             var r = segments[i].GetComponent<Renderer>();

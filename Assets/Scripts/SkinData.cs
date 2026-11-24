@@ -64,6 +64,15 @@ public static class SkinCatalog
             secret = true, unlockCode = "DELTA",
             customHeadId = "delta" // model postavy (Resources/DeltaGirl) + chlupatý ocas
         },
+        new SkinData {
+            id = "miku", displayName = "MIKU",
+            headColor = new Color(0.06f, 0.08f, 0.10f),
+            bodyColor = new Color(0.04f, 0.12f, 0.12f),
+            emissionColor = new Color(0.25f, 1.3f, 1.15f),
+            headGlow = 2.4f, bodyGlow = 1.6f,
+            secret = true, unlockCode = "MIKU",
+            customHeadId = "miku" // stejný CC0 model, přebarvený (Resources/MikuGirl)
+        },
     };
 
     static string selectedId = "neon";

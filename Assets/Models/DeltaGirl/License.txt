@@ -13,3 +13,7 @@ Licence: CC0 1.0 (public domain)
 Uvedení autora není povinné. Model je v projektu převedený do FBX (Blender 4.2, glTF import)
 a textury jsou zmenšené na 512–1024 px kvůli velikosti WebGL buildu.
 Původní soubor: HairSample_Female.vrm
+
+Skin MIKU používá tentýž CC0 model. Textury v TexturesMiku/ jsou jen přebarvené
+kopie (tyrkysové vlasy, tmavé šaty). Oficiální model ani textury Hatsune Miku
+se v projektu nepoužívají.

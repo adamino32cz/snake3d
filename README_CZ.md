@@ -112,11 +112,15 @@ Pomocné příkazy pro příkazovou řádku jsou v `Assets/Editor/SnakeBatch.cs`
 
 ## Skiny (vzhled hada)
 
-Na úvodní obrazovce je tlačítko **SKINY** (nebo klávesa **K**). Jsou tu čtyři odemčené vzhledy (Neon zelená, Ohnivý, Ledový, Zlatý) a jeden tajný skin, který se odemkne kódem zadaným v menu. Výběr i odemčení se ukládají do `PlayerPrefs`.
+Na úvodní obrazovce je tlačítko **SKINY** (nebo klávesa **K**). Jsou tu čtyři odemčené vzhledy (Neon zelená, Ohnivý, Ledový, Zlatý) a dva tajné skiny, které se odemknou kódem zadaným v menu. Výběr i odemčení se ukládají do `PlayerPrefs`.
 
 Barvy hada (hlava, tělo, záře) bere `SnakeController` z katalogu v `Assets/Scripts/SkinData.cs` (`SkinCatalog.All`). **Nový skin přidáš** jako další položku v tom poli: `id`, `displayName`, `headColor`, `bodyColor`, `emissionColor` (záře pro bloom, klidně jasnější než bílá), volitelně `secret` + `unlockCode`. Pole `customHeadId` umí vlastní model hlavy.
 
-Tajný skin **DELTA** (kód `DELTA`, test: `-skin delta`) nahradí hadí hlavu anime postavou (VRoid HairSample_Female, viz licence níže). Postava leží na břiše na místě hlavy, plazí se dopředu (procedurální pohyb rukou) a články těla hada jsou její rostoucí tmavě fialovo-černý chlupatý ocas, který se ke špičce zužuje a zesvětluje. Kolize a ovládání zůstávají stejné. Ostatní skiny (Neon, Ohnivý, Ledový, Zlatý) se nezměnily. Model je v `Assets/Models/DeltaGirl/` (FBX + zmenšené textury) a prefab v `Assets/Resources/DeltaGirl.prefab`.
+Tajný skin **DELTA** (kód `DELTA`, test: `-skin delta`) nahradí hadí hlavu anime postavou (VRoid HairSample_Female, viz licence níže) – kočičí dívka s tmavými culíky a původními barvami modelu. Postava je vzpřímená (lamia: trup stojí, nohy jsou schované do ocasu), vysoká zhruba tři políčka, a články těla hada jsou její rostoucí tmavě fialovo-černý chlupatý ocas, který plynule navazuje na boky, ke špičce se zužuje a zesvětluje.
+
+Druhý tajný skin **MIKU** (kód `MIKU`, test: `-skin miku`) používá tentýž CC0 model, jen přebarvený: tyrkysové culíky, tmavě šedé šaty s tyrkysovými lemy a tmavý ocas s tyrkysovým okrajem. Žádný oficiální model Hatsune Miku se nepoužívá.
+
+Kolize a ovládání zůstávají stejné. Ostatní skiny (Neon, Ohnivý, Ledový, Zlatý) se nezměnily. Model je v `Assets/Models/DeltaGirl/` (FBX + zmenšené textury), původní textury DELTA v `Textures/`, přebarvené textury MIKU v `TexturesMiku/`, prefaby v `Assets/Resources/DeltaGirl.prefab` a `Assets/Resources/MikuGirl.prefab`.
 
 V levelu, kde je cílem sníst určitý druh jídla (např. zlaté hvězdy), spawner na ploše vždy nechá aspoň jeden kus toho druhu, aby šel úkol splnit.
 
@@ -161,7 +165,7 @@ Všechny 3D modely jsou zdarma s licencí **CC0** (public domain) – smí se po
 |---|---|---|---|---|
 | Food Kit (2.0) | Kenney (www.kenney.nl) | https://kenney.nl/assets/food-kit | CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/) | jablko, houba, plechovka (soda-can), šálek kávy (cup-coffee) |
 | Platformer Kit (4.1) | Kenney (www.kenney.nl) | https://kenney.nl/assets/platformer-kit | CC0 1.0 | hvězda (star), srdce (heart), kotoučová pila (saw) |
-| HairSample_Female | VRoid ukázkový model (UniGLTF-1.28) | VRM meta: title HairSample_Female | CC0 1.0 (v metadatech VRM: licenseName=CC0, použití všemi, komerční použití povoleno) | tajný skin DELTA: postava s tmavými culíky a kočičíma ušima (převedeno do FBX, textury 512–1024 px) |
+| HairSample_Female | VRoid ukázkový model (UniGLTF-1.28) | VRM meta: title HairSample_Female | CC0 1.0 (v metadatech VRM: licenseName=CC0, použití všemi, komerční použití povoleno) | tajné skiny DELTA (původní vzhled, kočičí uši) a MIKU (přebarvené textury téhož modelu: tyrkysové culíky, tmavé šaty). Převedeno do FBX, textury 512–1024 px. Oficiální model Hatsune Miku se nepoužívá. |
 
 Licenční soubory jsou přiložené v `Assets/Models/KenneyFoodKit/License.txt`, `Assets/Models/KenneyPlatformerKit/License.txt` a `Assets/Models/DeltaGirl/License.txt`.
 Zvuky a hudbu jsme vyrobili sami programem (`Tools/generate_audio.py`), písmo LiberationSans je součástí TextMesh Pro (licence SIL OFL).

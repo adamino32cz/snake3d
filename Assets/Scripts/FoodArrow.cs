@@ -25,7 +25,10 @@ public class FoodArrow : MonoBehaviour
         if (!show) return;
 
         // šipka se vznáší nad hlavou a trochu se pohupuje
-        transform.position = snake.transform.position + Vector3.up * (height + Mathf.Sin(Time.time * 5f) * 0.08f);
+        float h = height;
+        var skin = SkinCatalog.Current();
+        if (skin != null && !string.IsNullOrEmpty(skin.customHeadId)) h = 3.3f; // vzpřímená postava (~3 políčka)
+        transform.position = snake.transform.position + Vector3.up * (h + Mathf.Sin(Time.time * 5f) * 0.08f);
         Vector3 dir = nearest.transform.position - snake.transform.position;
         dir.y = 0;
         transform.rotation = Quaternion.LookRotation(dir.normalized);

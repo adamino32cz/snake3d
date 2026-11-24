@@ -10,7 +10,7 @@ using UnityEngine;
 //   -screenshots   uloží pár obrázků (PNG) do složky "Screenshots" vedle hry
 //                  nebo do složky zadané jako -shotdir <cesta>
 //   -openskins     otevře menu SKINY (s -screenshots udělá jen krátké fotky menu a hry)
-//   -skin <id>     vybere vzhled (neon / fire / ice / gold / delta) – nastaví GameManager
+//   -skin <id>     vybere vzhled (neon / fire / ice / gold / delta / miku) – nastaví GameManager
 //   -shotfood <Kind>  s -screenshots: počká, až daný druh jídla bude na ploše, vyfotí a skončí
 // Při normálním hraní se tento skript vůbec nespustí.
 public class SnakeAutoplay : MonoBehaviour
@@ -45,7 +45,7 @@ public class SnakeAutoplay : MonoBehaviour
         shotDir = i >= 0 && i + 1 < args.Length ? args[i + 1] : Path.Combine(Application.dataPath, "..", "Screenshots");
         if (HasArg("-screenshots") && HasArg("-openskins")) StartCoroutine(ShotSkins());
         else if (HasArg("-screenshots") && ShotFoodKind() != null) StartCoroutine(ShotObjectiveFood());
-        else if (HasArg("-screenshots") && IsDeltaSkin()) StartCoroutine(ShotDelta());
+        else if (HasArg("-screenshots") && IsCharacterSkin()) StartCoroutine(ShotCharacter());
         else if (HasArg("-screenshots")) { StartCoroutine(TakeShots()); StartCoroutine(WatchLevels()); }
         else if (HasArg("-openskins")) gm.OpenSkinMenu();
         else gm.BeginPlay(); // bez fotek rovnou hrajeme (přeskočí úvodní obrazovku)
@@ -86,6 +86,7 @@ public class SnakeAutoplay : MonoBehaviour
         Shot("01_skins_menu.png");
         yield return new WaitForSeconds(0.4f);
         gm.TryUnlockCode("DELTA");
+        gm.TryUnlockCode("MIKU");
         yield return new WaitForSeconds(0.4f);
         Shot("02_skins_delta_unlocked.png");
         yield return new WaitForSeconds(0.4f);
@@ -196,16 +197,17 @@ public class SnakeAutoplay : MonoBehaviour
         return snake.Direction;
     }
 
-    static bool IsDeltaSkin()
+    static bool IsCharacterSkin()
     {
         var s = SkinCatalog.Current();
-        return s != null && s.customHeadId == "delta";
+        return s != null && !string.IsNullOrEmpty(s.customHeadId);
     }
 
-    // Krátké fotky skinu DELTA: detail postavy a hra s dlouhým ocasem.
-    IEnumerator ShotDelta()
+    // Krátké fotky skinu DELTA / MIKU: detail postavy a hra s dlouhým ocasem.
+    IEnumerator ShotCharacter()
     {
         Directory.CreateDirectory(shotDir);
+        string id = SkinCatalog.Current() != null ? SkinCatalog.Current().id : "delta";
         yield return new WaitForSeconds(1.2f);
         Shot("00_title.png");
         yield return new WaitForSeconds(0.35f);
@@ -218,14 +220,14 @@ public class SnakeAutoplay : MonoBehaviour
         yield return new WaitForSeconds(0.2f);
         Shot("02_midgame_tail.png");
         yield return new WaitForSeconds(0.35f);
-        yield return DeltaCloseUp();
+        yield return CharacterCloseUp(id);
         yield return new WaitForSeconds(0.3f);
         Shot("03_long_tail.png");
         yield return new WaitForSeconds(0.4f);
         Application.Quit();
     }
 
-    IEnumerator DeltaCloseUp()
+    IEnumerator CharacterCloseUp(string id)
     {
         var cam = Camera.main; var rig = cam ? cam.GetComponent<CameraRig>() : null;
         if (!cam || !snake) yield break;
@@ -233,17 +235,23 @@ public class SnakeAutoplay : MonoBehaviour
         if (rig) rig.enabled = false;
         float oldScale = Time.timeScale; Time.timeScale = 0.08f;
         Transform h = snake.transform;
-        // 3/4 záběr na postavu zepředu z boku
-        cam.transform.position = h.position + h.forward * 1.7f + h.right * 1.35f + Vector3.up * 1.55f;
-        cam.transform.LookAt(h.position + Vector3.up * 0.25f);
+        // 3/4 záběr na vzpřímenou postavu (obličej / trup)
+        cam.transform.position = h.position + h.forward * 4.4f + h.right * 2.5f + Vector3.up * 3.1f;
+        cam.transform.LookAt(h.position + Vector3.up * 1.7f);
         yield return new WaitForSecondsRealtime(0.45f);
-        Shot("01e_delta_closeup.png");
+        Shot($"01e_{id}_closeup.png");
+        yield return new WaitForSecondsRealtime(0.3f);
+        // bližší pohled na obličej zepředu
+        cam.transform.position = h.position + h.forward * 3.6f + h.right * 0.7f + Vector3.up * 2.3f;
+        cam.transform.LookAt(h.position + Vector3.up * 1.85f);
+        yield return new WaitForSecondsRealtime(0.45f);
+        Shot($"01e2_{id}_face.png");
         yield return new WaitForSecondsRealtime(0.3f);
         // pohled mírně shora podél ocasu
-        cam.transform.position = h.position - h.forward * 0.4f + h.right * 0.35f + Vector3.up * 2.6f;
-        cam.transform.LookAt(h.position - h.forward * 2.2f + Vector3.up * 0.15f);
+        cam.transform.position = h.position + h.forward * 0.4f + h.right * 0.7f + Vector3.up * 5.2f;
+        cam.transform.LookAt(h.position - h.forward * 2.0f + Vector3.up * 0.7f);
         yield return new WaitForSecondsRealtime(0.45f);
-        Shot("01f_delta_tail_closeup.png");
+        Shot($"01f_{id}_tail_closeup.png");
         yield return new WaitForSecondsRealtime(0.3f);
         cam.transform.SetPositionAndRotation(p, r);
         if (rig) rig.enabled = true;

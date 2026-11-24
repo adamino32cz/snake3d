@@ -1532,7 +1532,7 @@ SkinnedMeshRenderer:
   m_SortingOrder: 0
   serializedVersion: 2
   m_Quality: 0
-  m_UpdateWhenOffscreen: 1
+  m_UpdateWhenOffscreen: 0
   m_SkinnedMotionVectors: 1
   m_Mesh: {fileID: -4855403971026362441, guid: abaac06a35a2dcdef8503bc8dfde6d74, type: 3}
   m_Bones:
@@ -2820,7 +2820,7 @@ SkinnedMeshRenderer:
   m_SortingOrder: 0
   serializedVersion: 2
   m_Quality: 0
-  m_UpdateWhenOffscreen: 1
+  m_UpdateWhenOffscreen: 0
   m_SkinnedMotionVectors: 1
   m_Mesh: {fileID: 2959467708922500008, guid: abaac06a35a2dcdef8503bc8dfde6d74, type: 3}
   m_Bones:
@@ -3032,7 +3032,7 @@ SkinnedMeshRenderer:
   m_SortingOrder: 0
   serializedVersion: 2
   m_Quality: 0
-  m_UpdateWhenOffscreen: 1
+  m_UpdateWhenOffscreen: 0
   m_SkinnedMotionVectors: 1
   m_Mesh: {fileID: 3621554888825754127, guid: abaac06a35a2dcdef8503bc8dfde6d74, type: 3}
   m_Bones:
@@ -3970,12 +3970,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8ab75fbd2cba4db58a1b680263659637, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  modelScale: 0.72
-  hipBack: 0.35
-  hipHeight: 0.22
-  crawlSpeed: 8
-  headLift: 62
-  chestLift: 22
+  lookId: delta
+  modelScale: 3
+  hipBack: 1.25
+  hipHeight: 0.5
+  torsoLean: 16
+  crawlSpeed: 6
+  hairLengthScale: 1
 --- !u!1 &7891940871391763855
 GameObject:
   m_ObjectHideFlags: 0

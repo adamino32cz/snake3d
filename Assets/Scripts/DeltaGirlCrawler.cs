@@ -1,17 +1,16 @@
-using System.Collections.Generic;
 using UnityEngine;
 
-// Tajný skin DELTA: anime postava leží na břiše na místě hlavy hada a plazí se
-// dopředu. Články těla hada tvoří její rostoucí ocas (to řeší SnakeController).
-// Čistě vizuální – kolize a logika hada se nemění.
+// Custom head for secret skins DELTA (kočičí dívka) a MIKU (přebarvený stejný CC0 model).
+// Vzpřímená lamia: trup stojí, ocas hada navazuje u boků. Čistě vizuální.
 public class DeltaGirlCrawler : MonoBehaviour
 {
-    public float modelScale = 0.72f;
-    public float hipBack = 0.35f;       // boky kousek za středem políčka (směrem k ocasu)
-    public float hipHeight = 0.22f;     // výška boků nad podlahou
-    public float crawlSpeed = 8f;
-    public float headLift = 62f;        // zvednutí hlavy, ať je vidět obličej a uši
-    public float chestLift = 22f;
+    public string lookId = "delta";
+    public float modelScale = 3f;       // ~3 políčka na výšku (od boků k vlasům dominantní figura)
+    public float hipBack = 1.25f;       // boky nad začátkem ocasu, ať šaty nekříží první článek
+    public float hipHeight = 0.50f;     // výška boků = začátek ocasu
+    public float torsoLean = 16f;       // mírný předklon
+    public float crawlSpeed = 6f;
+    public float hairLengthScale = 1f;  // MIKU: delší culíky
 
     Transform hips, spine, chest, upperChest, neck, head;
     Transform lUpper, lLower, rUpper, rLower;
@@ -19,33 +18,40 @@ public class DeltaGirlCrawler : MonoBehaviour
     Quaternion hips0, spine0, chest0, upperChest0, neck0, head0;
     Quaternion lUpper0, lLower0, rUpper0, rLower0;
     Quaternion lUpperLeg0, lLowerLeg0, rUpperLeg0, rLowerLeg0;
-    bool mapped;
+    bool mapped, hairScaled;
     int fitFrames = 4;
 
-    public static DeltaGirlCrawler Attach(Transform headParent, GameObject prefab)
+    public static DeltaGirlCrawler Attach(Transform headParent, GameObject prefab, string lookId)
     {
         if (!headParent || !prefab) return null;
-        var existing = headParent.GetComponentInChildren<DeltaGirlCrawler>(true);
-        if (existing)
+        DeltaGirlCrawler found = null;
+        foreach (var c in headParent.GetComponentsInChildren<DeltaGirlCrawler>(true))
         {
-            existing.gameObject.SetActive(true);
-            existing.fitFrames = 4;
-            existing.FitToHead();
-            return existing;
+            if (c.lookId == lookId) found = c;
+            else c.gameObject.SetActive(false);
+        }
+        if (found)
+        {
+            found.gameObject.SetActive(true);
+            found.fitFrames = 4;
+            found.FitToHead();
+            return found;
         }
         var go = Instantiate(prefab, headParent, false);
-        go.name = "DeltaGirl";
-        var c = go.GetComponent<DeltaGirlCrawler>() ?? go.AddComponent<DeltaGirlCrawler>();
-        c.FitToHead();
-        return c;
+        go.name = lookId == "miku" ? "MikuGirl" : "DeltaGirl";
+        var comp = go.GetComponent<DeltaGirlCrawler>() ?? go.AddComponent<DeltaGirlCrawler>();
+        comp.lookId = lookId;
+        comp.FitToHead();
+        return comp;
     }
 
     public void FitToHead()
     {
-        transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
         transform.localScale = Vector3.one * modelScale;
-        transform.localPosition = new Vector3(0f, -0.2f, 0f);
-        fitFrames = 4;
+        transform.localPosition = Vector3.zero;
+        fitFrames = 8;
+        EnsureLights();
+        if (mapped) AlignUpright();
     }
 
     void Awake()
@@ -63,6 +69,8 @@ public class DeltaGirlCrawler : MonoBehaviour
         rUpper0 = Rest(rUpper); rLower0 = Rest(rLower);
         lUpperLeg0 = Rest(lUpperLeg); lLowerLeg0 = Rest(lLowerLeg);
         rUpperLeg0 = Rest(rUpperLeg); rLowerLeg0 = Rest(rLowerLeg);
+        LengthenHair();
+        EnsureLights();
     }
 
     static Quaternion Rest(Transform t) => t ? t.localRotation : Quaternion.identity;
@@ -95,50 +103,118 @@ public class DeltaGirlCrawler : MonoBehaviour
         return null;
     }
 
-    void LateUpdate()
+    void LengthenHair()
     {
-        if (!mapped || !isActiveAndEnabled) return;
-        ApplyCrawlPose();
-        if (fitFrames > 0)
+        if (hairScaled || hairLengthScale <= 1.01f) return;
+        hairScaled = true;
+        foreach (var t in GetComponentsInChildren<Transform>(true))
         {
-            AutoFit();
-            fitFrames--;
+            if (!t.name.StartsWith("HairJoint")) continue;
+            if (t.parent && t.parent.name.StartsWith("HairJoint")) continue;
+            int depth = 0;
+            var x = t;
+            while (x.childCount > 0 && x.GetChild(0).name.StartsWith("HairJoint"))
+            { x = x.GetChild(0); depth++; }
+            // Jen delší řetězy (culíky), ať se neprotáhnou ofiny / uši.
+            if (depth < 3) continue;
+            var s = t.localScale;
+            s.x *= hairLengthScale;
+            s.y *= hairLengthScale;
+            s.z *= hairLengthScale;
+            t.localScale = s;
         }
     }
 
-    void ApplyCrawlPose()
+    void EnsureLights()
     {
-        // Bez škálování kostí (to roztrhá mesh) a bez kumulativního otáčení vlasů.
-        // Nohy rovně dozadu do ocasu, ruce se střídavě natahují dopředu, hlava zvednutá.
-        if (spine) spine.localRotation = spine0 * Quaternion.Euler(-8f, 0f, 0f);
-        if (chest) chest.localRotation = chest0 * Quaternion.Euler(-chestLift * 0.5f, 0f, 0f);
-        if (upperChest) upperChest.localRotation = upperChest0 * Quaternion.Euler(-chestLift, 0f, 0f);
-        if (neck) neck.localRotation = neck0 * Quaternion.Euler(-headLift * 0.55f, 0f, 0f);
-        if (head) head.localRotation = head0 * Quaternion.Euler(-headLift * 0.45f, 0f, 0f);
+        if (transform.Find("BeautyLight")) return;
+        bool miku = lookId == "miku";
+        var key = NewLight("BeautyLight", new Vector3(0.55f, 1.55f, 0.95f),
+            5.5f, 3.4f, new Color(1f, 0.96f, 0.92f));
+        NewLight("RimLight", new Vector3(-0.55f, 1.25f, -0.7f),
+            4.5f, 1.8f, miku ? new Color(0.22f, 0.85f, 0.78f) : new Color(0.75f, 0.6f, 1f));
+    }
+
+    Light NewLight(string name, Vector3 localPos, float range, float intensity, Color color)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(transform, false);
+        go.transform.localPosition = localPos;
+        var l = go.AddComponent<Light>();
+        l.type = LightType.Point;
+        l.range = range;
+        l.intensity = intensity;
+        l.color = color;
+        l.shadows = LightShadows.None;
+        return l;
+    }
+
+    void LateUpdate()
+    {
+        if (!mapped || !isActiveAndEnabled) return;
+        transform.localScale = Vector3.one * modelScale;
+        transform.localRotation = Quaternion.identity;
+        ApplyLamiaPose();
+        AlignUpright();
+        AutoFit();
+    }
+
+    void ApplyLamiaPose()
+    {
+        // Jemný, vzpřímený postoj – obličej mírně vzhůru (lépe vidět z kamery).
+        if (spine) spine.localRotation = spine0 * Quaternion.Euler(-6f, 0f, 0f);
+        if (chest) chest.localRotation = chest0 * Quaternion.Euler(-4f, 0f, 0f);
+        if (upperChest) upperChest.localRotation = upperChest0 * Quaternion.Euler(-3f, 0f, 0f);
+        if (neck) neck.localRotation = neck0 * Quaternion.Euler(-14f, 0f, 0f);
+        if (head) head.localRotation = head0 * Quaternion.Euler(-10f, 0f, 0f);
 
         float phase = Time.time * crawlSpeed;
-        float lReach = Mathf.Sin(phase);
-        float rReach = Mathf.Sin(phase + Mathf.PI);
-        float sway = Mathf.Sin(phase * 0.5f) * 6f;
-        if (hips) hips.localRotation = hips0 * Quaternion.Euler(8f, sway, 0f);
+        float sway = Mathf.Sin(phase * 0.5f);
+        if (hips) hips.localRotation = hips0 * Quaternion.Euler(0f, sway * 4f, 0f);
 
-        // T-pose paže jdou do stran; přetočíme je dopředu k hlavě a střídavě natahujeme.
-        if (lUpper) lUpper.localRotation = lUpper0 * Quaternion.Euler(10f, 0f, 70f + 18f * lReach);
-        if (lLower) lLower.localRotation = lLower0 * Quaternion.Euler(0f, 0f, 50f - 20f * lReach);
-        if (rUpper) rUpper.localRotation = rUpper0 * Quaternion.Euler(10f, 0f, -70f - 18f * rReach);
-        if (rLower) rLower.localRotation = rLower0 * Quaternion.Euler(0f, 0f, -50f + 20f * rReach);
+        // Uvolněné paže, lehký pohyb (ne plazení po břiše).
+        // Výchozí T-pose má paže vodorovně – spustíme je podél těla (opačné Z než při zdvižení).
+        if (lUpper) lUpper.localRotation = lUpper0 * Quaternion.Euler(8f, 6f, -70f + 6f * sway);
+        if (lLower) lLower.localRotation = lLower0 * Quaternion.Euler(0f, 0f, 16f);
+        if (rUpper) rUpper.localRotation = rUpper0 * Quaternion.Euler(8f, -6f, 70f - 6f * sway);
+        if (rLower) rLower.localRotation = rLower0 * Quaternion.Euler(0f, 0f, -14f);
 
-        // Nohy dozadu podél ocasu (skryjí se v prvních článcích).
-        if (lUpperLeg) lUpperLeg.localRotation = lUpperLeg0 * Quaternion.Euler(-12f, 0f, 8f);
-        if (rUpperLeg) rUpperLeg.localRotation = rUpperLeg0 * Quaternion.Euler(-12f, 0f, -8f);
-        if (lLowerLeg) lLowerLeg.localRotation = lLowerLeg0 * Quaternion.Euler(8f, 0f, 0f);
-        if (rLowerLeg) rLowerLeg.localRotation = rLowerLeg0 * Quaternion.Euler(8f, 0f, 0f);
+        // Nohy dozadu do ocasu, ať neprocházejí podlahou.
+        if (lUpperLeg) lUpperLeg.localRotation = lUpperLeg0 * Quaternion.Euler(-85f, 6f, 8f);
+        if (rUpperLeg) rUpperLeg.localRotation = rUpperLeg0 * Quaternion.Euler(-85f, -6f, -8f);
+        if (lLowerLeg) lLowerLeg.localRotation = lLowerLeg0 * Quaternion.Euler(18f, 0f, 0f);
+        if (rLowerLeg) rLowerLeg.localRotation = rLowerLeg0 * Quaternion.Euler(18f, 0f, 0f);
+    }
+
+    int _dbg;
+    void AlignUpright()
+    {
+        if (!hips || !head) return;
+        // Každý snímek od identity wrapperu, ať se rotace nesčítá.
+        // Změříme skutečný směr páteře (nezávisle na osách FBX) a vztyčíme ho.
+        Vector3 spine = head.position - hips.position;
+        if (spine.sqrMagnitude < 1e-8f) return;
+        Vector3 move = transform.parent ? transform.parent.forward : Vector3.forward;
+        move.y = 0f;
+        if (move.sqrMagnitude < 1e-6f) move = Vector3.forward;
+        move.Normalize();
+        // nejdřív páteř nahoru, pak obličej vpřed, pak mírný předklon
+        transform.rotation = Quaternion.FromToRotation(spine.normalized, Vector3.up) * transform.rotation;
+        transform.Rotate(Vector3.up, 180f, Space.World);
+        Vector3 right = Vector3.Cross(Vector3.up, move);
+        // mírný záklon: obličej jde vzhůru k vysoké herní kameře
+        if (right.sqrMagnitude > 1e-6f)
+            transform.Rotate(right.normalized, -torsoLean, Space.World);
+        if (_dbg < 2)
+        {
+            Vector3 s2 = head.position - hips.position;
+            Debug.Log($"[Lamia] spine0={spine} spine1={s2} hips={hips.position} head={head.position} wrap={transform.eulerAngles} move={move}");
+            _dbg++;
+        }
     }
 
     void AutoFit()
     {
-        // Pozici bereme z kosti boků (AABB skinned meshe z FBX může být mimo a
-        // postavu by to zabořilo pod podlahu).
         if (!hips || !transform.parent) return;
         Vector3 desired = transform.parent.position - transform.parent.forward * hipBack;
         desired.y = hipHeight;
