@@ -286,7 +286,14 @@ public class SnakeController : MonoBehaviour
 
     void RebuildTailTube()
     {
-        bool miku = HasCharacter && characterLook == "miku";
+        // běžné skiny (neon / oheň / led / zlato) zůstávají klasické koule – trubka a vlasy jen u postav
+        if (!HasCharacter)
+        {
+            if (tailTube) tailTube.Hide();
+            if (hairTails) hairTails.Hide();
+            return;
+        }
+        bool miku = characterLook == "miku";
         if (miku)
         {
             if (tailTube) tailTube.Hide();
@@ -440,10 +447,9 @@ public class SnakeController : MonoBehaviour
             float glow = Mathf.Lerp(headGlow, tailGlow, t);
             TintPart(segments[i], c, e, glow, false);
             segments[i].localScale = Vector3.one * Mathf.Lerp(bodySize, tailSize, t);
-            // tělo kreslí trubka, koule schováme (pozice zůstávají)
-            var r = segments[i].GetComponent<Renderer>();
-            if (r) r.enabled = false;
         }
+        if (tailTube) tailTube.Hide();
+        if (hairTails) hairTails.Hide();
         if (firstPersonHide) SetDefaultHeadVisible(false);
     }
 
@@ -474,7 +480,12 @@ public class SnakeController : MonoBehaviour
             }
             halo.gameObject.SetActive(true);
         }
-        else if (halo) Destroy(halo.gameObject);
+        else
+        {
+            if (halo) Destroy(halo.gameObject);
+            var br = seg.GetComponent<Renderer>();
+            if (br && bodyMaterial) br.sharedMaterial = bodyMaterial;
+        }
     }
 
     // Obarví renderer (u hlavy i čumák, oči a obočí nechá být).

@@ -46,6 +46,7 @@ public class SnakeAutoplay : MonoBehaviour
         shotDir = i >= 0 && i + 1 < args.Length ? args[i + 1] : Path.Combine(Application.dataPath, "..", "Screenshots");
         DeltaGirlCrawler.AllFours = false;
         if (pendingTitleShot && HasArg("-screenshots")) { StartCoroutine(ShotTitleAfterMenu()); return; }
+        if (HasArg("-screenshots") && HasArg("-shotnormal")) { StartCoroutine(ShotNormalSkin()); return; }
         if (HasArg("-screenshots") && HasArg("-shotgameover")) StartCoroutine(ShotGameOverMenu());
         else if (HasArg("-screenshots") && HasArg("-openskins")) StartCoroutine(ShotSkins());
         else if (HasArg("-screenshots") && ShotFoodKind() != null) StartCoroutine(ShotObjectiveFood());
@@ -255,6 +256,54 @@ public class SnakeAutoplay : MonoBehaviour
     {
         var s = SkinCatalog.Current();
         return s != null && !string.IsNullOrEmpty(s.customHeadId);
+    }
+
+    // Krátké fotky výchozího (neon) skinu: přehled / 3. osoba / 1. osoba a klávesa V.
+    IEnumerator ShotNormalSkin()
+    {
+        Directory.CreateDirectory(shotDir);
+        SkinCatalog.Select("neon");
+        if (snake) snake.ApplySkin(SkinCatalog.Current());
+        yield return new WaitForSeconds(0.8f);
+        Shot("00_title.png");
+        yield return new WaitForSeconds(0.3f);
+        if (gm) gm.BeginPlay();
+        if (snake) snake.Grow(12);
+        float step = snake ? snake.stepInterval : 0.16f;
+        yield return new WaitForSeconds(step * 8f + 0.3f);
+        if (snake) snake.Stop();
+        var cam = Camera.main;
+        var rig = cam ? cam.GetComponent<CameraRig>() : null;
+        if (rig) { rig.enabled = true; Time.timeScale = 1f; }
+
+        if (rig) { rig.SetView(CameraView.Overview); }
+        if (snake) snake.ApplyCameraView(CameraView.Overview);
+        yield return new WaitForSeconds(0.45f);
+        Shot("01_overview.png");
+        yield return new WaitForSeconds(0.25f);
+
+        if (rig) { rig.SetView(CameraView.ThirdPerson); }
+        if (snake) snake.ApplyCameraView(CameraView.ThirdPerson);
+        yield return new WaitForSeconds(0.7f);
+        Shot("02_third.png");
+        yield return new WaitForSeconds(0.25f);
+
+        if (rig) { rig.SetView(CameraView.FirstPerson); }
+        if (snake) snake.ApplyCameraView(CameraView.FirstPerson);
+        yield return new WaitForSeconds(0.55f);
+        Shot("03_first.png");
+        yield return new WaitForSeconds(0.2f);
+
+        if (rig) { rig.SetView(CameraView.Overview); }
+        if (snake) snake.ApplyCameraView(CameraView.Overview);
+        DeltaGirlCrawler.AllFours = true;
+        yield return new WaitForSeconds(0.4f);
+        Shot("04_v_toggle.png");
+        DeltaGirlCrawler.AllFours = false;
+        yield return new WaitForSeconds(0.35f);
+        Shot("normal_fixed.png");
+        yield return new WaitForSeconds(0.2f);
+        Application.Quit();
     }
 
     // Krátké fotky skinu DELTA / MIKU: detail postavy a hra s dlouhým ocasem.
