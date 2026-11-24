@@ -37,7 +37,7 @@ public class SnakeTailTube : MonoBehaviour
         if (mr) mr.enabled = false;
     }
 
-    public void Rebuild(IList<Vector3> srcPts, IList<float> srcRads, Material fallback, Color emit, bool character, bool miku)
+    public void Rebuild(IList<Vector3> srcPts, IList<float> srcRads, Material fallback, Color emit, bool character, bool miku, bool hair = false)
     {
         Ensure(fallback);
         if (srcPts == null || srcPts.Count < 2)
@@ -83,10 +83,10 @@ public class SnakeTailTube : MonoBehaviour
         }
 
         BuildMesh();
-        ApplyLook(fallback, emit, character, miku);
+        ApplyLook(fallback, emit, character, miku, hair);
     }
 
-    void ApplyLook(Material fallback, Color emit, bool character, bool miku)
+    void ApplyLook(Material fallback, Color emit, bool character, bool miku, bool hair = false)
     {
         if (!mr) return;
         if (character)
@@ -95,14 +95,24 @@ public class SnakeTailTube : MonoBehaviour
             if (tubeMat)
             {
                 mr.sharedMaterial = tubeMat;
-                Color rim = miku ? new Color(0.22f, 0.95f, 0.88f) : new Color(0.72f, 0.38f, 1.05f);
-                Color dark = miku ? new Color(0.05f, 0.06f, 0.07f) : new Color(0.055f, 0.03f, 0.08f);
                 var block = new MaterialPropertyBlock();
                 mr.GetPropertyBlock(block);
-                block.SetColor("_BaseColor", dark);
-                block.SetColor("_EmissionColor", rim * 0.85f);
-                block.SetTexture("_BaseMap", miku ? FurTex(true) : FurTex(false));
-                block.SetTexture("_EmissionMap", miku ? EmitTex(true) : EmitTex(false));
+                if (hair)
+                {
+                    block.SetColor("_BaseColor", new Color(0.14f, 0.62f, 0.58f));
+                    block.SetColor("_EmissionColor", new Color(0.28f, 0.95f, 0.88f) * 0.7f);
+                    block.SetTexture("_BaseMap", HairTex());
+                    block.SetTexture("_EmissionMap", HairEmitTex());
+                }
+                else
+                {
+                    Color rim = miku ? new Color(0.22f, 0.95f, 0.88f) : new Color(0.72f, 0.38f, 1.05f);
+                    Color dark = miku ? new Color(0.05f, 0.06f, 0.07f) : new Color(0.055f, 0.03f, 0.08f);
+                    block.SetColor("_BaseColor", dark);
+                    block.SetColor("_EmissionColor", rim * 0.85f);
+                    block.SetTexture("_BaseMap", miku ? FurTex(true) : FurTex(false));
+                    block.SetTexture("_EmissionMap", miku ? EmitTex(true) : EmitTex(false));
+                }
                 block.SetVector("_BaseMap_ST", new Vector4(1f, 1f, 0f, 0f));
                 block.SetVector("_EmissionMap_ST", new Vector4(1f, 1f, 0f, 0f));
                 mr.SetPropertyBlock(block);
@@ -133,6 +143,55 @@ public class SnakeTailTube : MonoBehaviour
     {
         if (!litShader) litShader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Universal Render Pipeline/Unlit");
         return litShader;
+    }
+
+    static Texture2D hairTex;
+    static Texture2D hairEmitTex;
+
+    static Texture2D HairTex()
+    {
+        if (hairTex) return hairTex;
+        const int w = 64, h = 128;
+        var t = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        t.wrapMode = TextureWrapMode.Repeat;
+        t.filterMode = FilterMode.Bilinear;
+        for (int y = 0; y < h; y++)
+        for (int x = 0; x < w; x++)
+        {
+            float u = x / (w - 1f);
+            float v = y / (h - 1f);
+            float ridge = Mathf.Pow(1f - Mathf.Abs(u - 0.5f) * 2f, 1.35f);
+            float strand = 0.65f + 0.35f * Mathf.Sin(u * 24f + v * 4f);
+            Color dark = new Color(0.05f, 0.26f, 0.28f);
+            Color mid = new Color(0.22f, 0.82f, 0.76f);
+            Color hi = new Color(0.62f, 1f, 0.95f);
+            Color c = Color.Lerp(dark, mid, 0.4f + 0.35f * strand);
+            c = Color.Lerp(c, hi, ridge * 0.42f);
+            t.SetPixel(x, y, c);
+        }
+        t.Apply(false, true);
+        hairTex = t;
+        return t;
+    }
+
+    static Texture2D HairEmitTex()
+    {
+        if (hairEmitTex) return hairEmitTex;
+        const int w = 64, h = 128;
+        var t = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        t.wrapMode = TextureWrapMode.Repeat;
+        t.filterMode = FilterMode.Bilinear;
+        for (int y = 0; y < h; y++)
+        for (int x = 0; x < w; x++)
+        {
+            float u = x / (w - 1f);
+            float ridge = Mathf.Pow(1f - Mathf.Abs(u - 0.5f) * 2f, 1.6f);
+            Color c = Color.Lerp(new Color(0.08f, 0.28f, 0.28f), new Color(0.45f, 1f, 0.94f), ridge);
+            t.SetPixel(x, y, c);
+        }
+        t.Apply(false, true);
+        hairEmitTex = t;
+        return t;
     }
 
     static Texture2D FurTex(bool miku)

@@ -571,9 +571,9 @@ public static class SnakeSceneSetup
         sub.characterSpacing = 30;
         var press = Text(title.transform, "PressStart", new Vector2(0.5f, 0.5f), new Vector2(0, -150), TextAlignmentOptions.Center, 52, fontCyan);
         press.rectTransform.sizeDelta = new Vector2(1400, 90); press.text = "stiskni MEZERNÍK";
-        var help = Text(title.transform, "Help", new Vector2(0.5f, 0.5f), new Vector2(0, -255), TextAlignmentOptions.Center, 32, fontCyan);
-        help.rectTransform.sizeDelta = new Vector2(1700, 90);
-        help.text = "Šipky / WASD = řízení    C = kamera (přehled / 3. osoba / 1. osoba)    K = skiny";
+        var help = Text(title.transform, "Help", new Vector2(0.5f, 0.5f), new Vector2(0, -255), TextAlignmentOptions.Center, 26, fontCyan);
+        help.rectTransform.sizeDelta = new Vector2(1900, 90);
+        help.text = "Šipky / WASD = řízení    C = kamera (přehled / 3. osoba / 1. osoba)    V = plazení / po čtyřech    K = skiny";
         // legenda jídla: vlastní materiál bez záře, jinak by barvy vybledly do bíla
         var legend = Text(title.transform, "FoodLegend", new Vector2(0.5f, 0.5f), new Vector2(0, -315), TextAlignmentOptions.Center, 36, fontPlain);
         legend.rectTransform.sizeDelta = new Vector2(1700, 60);

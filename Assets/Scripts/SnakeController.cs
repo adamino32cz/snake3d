@@ -29,6 +29,7 @@ public class SnakeController : MonoBehaviour
 
     DeltaGirlCrawler character;
     SnakeTailTube tailTube;
+    MikuHairTails hairTails;
     bool firstPersonHide;
     string characterLook; // "delta" / "miku" / null
     bool HasCharacter => !string.IsNullOrEmpty(characterLook);
@@ -280,10 +281,34 @@ public class SnakeController : MonoBehaviour
     void OnDestroy()
     {
         if (tailTube) Destroy(tailTube.gameObject);
+        if (hairTails) Destroy(hairTails.gameObject);
     }
 
     void RebuildTailTube()
     {
+        bool miku = HasCharacter && characterLook == "miku";
+        if (miku)
+        {
+            if (tailTube) tailTube.Hide();
+            if (hairTails == null)
+            {
+                var go = new GameObject("MikuHairTails");
+                if (arena) go.transform.SetParent(arena.transform, false);
+                go.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+                hairTails = go.AddComponent<MikuHairTails>();
+            }
+            hairTails.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            int hn = segments.Count;
+            var path = new System.Collections.Generic.List<Vector3>(hn);
+            for (int i = 1; i < hn; i++) path.Add(segments[i].position);
+            if (path.Count < 2) { hairTails.Hide(); return; }
+            Vector3 move = new Vector3(dir.x, 0f, dir.y);
+            Transform hb = character ? character.HeadBone : transform;
+            hairTails.Rebuild(path, hb, move);
+            return;
+        }
+        if (hairTails) hairTails.Hide();
+
         if (tailTube == null)
         {
             var go = new GameObject("TailTube");

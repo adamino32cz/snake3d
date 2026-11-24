@@ -239,11 +239,13 @@ public class GameManager : MonoBehaviour
             if (chosen != level) SelectLevel(chosen);
             if (Input.GetKeyDown(KeyCode.K)) { OpenSkinMenu(); return; }
             if (Input.GetKeyDown(KeyCode.C)) CycleCamera();
+            if (Input.GetKeyDown(KeyCode.V)) ToggleCrawlStyle();
             if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return)) BeginPlay();
             return;
         }
         if (state == State.Skins) { SkinMenuInput(); return; }
         if (Input.GetKeyDown(KeyCode.C)) CycleCamera();
+        if (Input.GetKeyDown(KeyCode.V)) ToggleCrawlStyle();
         if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.P))
         {
             if (state == State.Playing) SetPaused(true);
@@ -383,6 +385,17 @@ public class GameManager : MonoBehaviour
         if (hintText) { hintText.text = ""; hintText.alpha = 1f; }
     }
 
+    void ToggleCrawlStyle()
+    {
+        bool fours = DeltaGirlCrawler.ToggleAllFours();
+        if (!hintText) return;
+        hintText.fontSize = 24;
+        hintText.text = fours ? "Pohyb: po čtyřech" : "Pohyb: plazení";
+        hintText.alpha = 1f;
+        StopCoroutine(nameof(FadeCamHint));
+        StartCoroutine(FadeCamHint());
+    }
+
     // Krátká nápověda při první hře: 3 tipy po sobě, každý 3 s.
     System.Collections.IEnumerator TutorialRoutine()
     {
@@ -391,6 +404,7 @@ public class GameManager : MonoBehaviour
             "<color=#80FFFF>Šipky / WASD</color> = zatáčení. Sbírej jídlo a rosteš!",
             "Nenarážej do <color=#FF6080>zdí</color>, do <color=#FF9040>pil</color> ani do sebe.",
             "<color=#80FFFF>C</color> = kamera (přehled / 3. osoba / 1. osoba). V 3. a 1. osobě vlevo/vpravo zatáčí podle hada.",
+            "<color=#80FFFF>V</color> = plazení / po čtyřech.",
             "Barevná jídla dávají vylepšení. <color=#FFE14D>Esc</color> = pauza.",
         };
         foreach (var tip in tips)

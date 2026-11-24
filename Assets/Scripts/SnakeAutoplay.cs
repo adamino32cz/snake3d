@@ -44,6 +44,7 @@ public class SnakeAutoplay : MonoBehaviour
         var args = CmdArgs.Get();
         int i = System.Array.IndexOf(args, "-shotdir");
         shotDir = i >= 0 && i + 1 < args.Length ? args[i + 1] : Path.Combine(Application.dataPath, "..", "Screenshots");
+        DeltaGirlCrawler.AllFours = false;
         if (pendingTitleShot && HasArg("-screenshots")) { StartCoroutine(ShotTitleAfterMenu()); return; }
         if (HasArg("-screenshots") && HasArg("-shotgameover")) StartCoroutine(ShotGameOverMenu());
         else if (HasArg("-screenshots") && HasArg("-openskins")) StartCoroutine(ShotSkins());
@@ -316,21 +317,21 @@ public class SnakeAutoplay : MonoBehaviour
         if (rig) rig.enabled = false;
         float oldScale = Time.timeScale; Time.timeScale = 0.08f;
         Transform h = snake.transform;
-        // 3/4 záběr na postavu lezoucí po čtyřech
-        cam.transform.position = h.position + h.forward * 3.8f + h.right * 2.4f + Vector3.up * 1.85f;
-        cam.transform.LookAt(h.position + Vector3.up * 0.50f - h.forward * 0.35f);
+        // 3/4 záběr na plazení po břiše (níže u země)
+        cam.transform.position = h.position + h.forward * 3.6f + h.right * 2.3f + Vector3.up * 1.35f;
+        cam.transform.LookAt(h.position + Vector3.up * 0.38f - h.forward * 0.25f);
         yield return new WaitForSecondsRealtime(0.45f);
         Shot($"01e_{id}_closeup.png");
         yield return new WaitForSecondsRealtime(0.3f);
         // bližší pohled na obličej zepředu (níž)
-        cam.transform.position = h.position + h.forward * 2.6f + h.right * 0.55f + Vector3.up * 1.15f;
-        cam.transform.LookAt(h.position + Vector3.up * 0.50f);
+        cam.transform.position = h.position + h.forward * 2.5f + h.right * 0.50f + Vector3.up * 0.95f;
+        cam.transform.LookAt(h.position + Vector3.up * 0.42f);
         yield return new WaitForSecondsRealtime(0.45f);
         Shot($"01e2_{id}_face.png");
         yield return new WaitForSecondsRealtime(0.3f);
         // pohled shora podél ocasu
-        cam.transform.position = h.position - h.forward * 0.2f + h.right * 0.7f + Vector3.up * 4.4f;
-        cam.transform.LookAt(h.position - h.forward * 1.8f + Vector3.up * 0.30f);
+        cam.transform.position = h.position - h.forward * 0.4f + h.right * 0.9f + Vector3.up * 5.2f;
+        cam.transform.LookAt(h.position - h.forward * 3.4f + Vector3.up * 0.22f);
         yield return new WaitForSecondsRealtime(0.45f);
         Shot($"01f_{id}_tail_closeup.png");
         yield return new WaitForSecondsRealtime(0.3f);

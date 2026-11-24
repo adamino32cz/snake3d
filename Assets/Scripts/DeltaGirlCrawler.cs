@@ -1,7 +1,7 @@
 using UnityEngine;
 
 // Custom head for secret skins DELTA (kočičí dívka) a MIKU (Tda-style Hatsune Miku).
-// Leze po čtyřech (ruce a kolena), hledí dopředu, ocas navazuje u boků. Čistě vizuální.
+// Výchozí pohyb: plazení po břiše (hlava vzhůru). V = varianta po čtyřech. Čistě vizuální.
 [DefaultExecutionOrder(10)]
 public class DeltaGirlCrawler : MonoBehaviour
 {
@@ -12,6 +12,26 @@ public class DeltaGirlCrawler : MonoBehaviour
     public float torsoLean = 82f;       // sklon trupu k vodorovné (ze stoje)
     public float crawlSpeed = 6f;
     public float hairLengthScale = 1f;
+
+    public const string PrefsAllFours = "Snake3D_AllFours";
+
+    public static bool AllFours
+    {
+        get => PlayerPrefs.GetInt(PrefsAllFours, 0) == 1;
+        set
+        {
+            PlayerPrefs.SetInt(PrefsAllFours, value ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+    }
+
+    public static bool ToggleAllFours()
+    {
+        AllFours = !AllFours;
+        return AllFours;
+    }
+
+    public Transform HeadBone => head;
 
     Transform hips, spine, chest, upperChest, neck, head;
     Transform lUpper, lLower, rUpper, rLower;
@@ -245,8 +265,9 @@ public class DeltaGirlCrawler : MonoBehaviour
         transform.rotation = Quaternion.FromToRotation(spineDir.normalized, Vector3.up) * transform.rotation;
         transform.Rotate(Vector3.up, 180f, Space.World);
         Vector3 right = Vector3.Cross(Vector3.up, move);
+        float lean = AllFours ? torsoLean : 88f;
         if (right.sqrMagnitude > 1e-6f)
-            transform.Rotate(right.normalized, torsoLean, Space.World);
+            transform.Rotate(right.normalized, lean, Space.World);
     }
 
     void LiftHead()
@@ -256,8 +277,8 @@ public class DeltaGirlCrawler : MonoBehaviour
         if (right.sqrMagnitude < 1e-6f) return;
         right.Normalize();
         // po předklonu hledí do země – zvedneme krk a hlavu, ať kouká dopředu
-        if (neck) neck.Rotate(right, -52f, Space.World);
-        if (head) head.Rotate(right, -28f, Space.World);
+        if (neck) neck.Rotate(right, AllFours ? -52f : -58f, Space.World);
+        if (head) head.Rotate(right, AllFours ? -28f : -32f, Space.World);
     }
 
     void AutoFit()
@@ -266,7 +287,7 @@ public class DeltaGirlCrawler : MonoBehaviour
         Vector3 move = MoveDir();
         float torso = head ? Vector3.Distance(hips.position, head.position) : 1.2f;
         Vector3 desired = transform.parent.position - move * Mathf.Max(0.95f, torso * 0.82f);
-        desired.y = hipHeight > 0.2f ? hipHeight : 0.70f;
+        desired.y = AllFours ? (hipHeight > 0.2f ? hipHeight : 0.70f) : 0.30f;
         transform.position += desired - hips.position;
     }
 
@@ -276,8 +297,9 @@ public class DeltaGirlCrawler : MonoBehaviour
         var snake = GetComponentInParent<SnakeController>();
         if (snake)
             step = Mathf.Max(0.08f, snake.IsBoosted ? snake.stepInterval * 0.6f : snake.stepInterval);
-        // celý cyklus (levá i pravá) za 2 políčka
-        return Time.time * (Mathf.PI / step);
+        // po čtyřech: cyklus za 2 políčka; plazení: pomalejší tah za 4 políčka
+        float cells = AllFours ? 2f : 4f;
+        return Time.time * (2f * Mathf.PI / (step * cells));
     }
 
     void ApplyCrawlGait()
@@ -310,6 +332,13 @@ public class DeltaGirlCrawler : MonoBehaviour
     static Vector3 HandTarget(Transform shoulder, Vector3 move, Vector3 right, float side, float swing)
     {
         Vector3 root = shoulder ? shoulder.position : Vector3.zero;
+        if (!AllFours)
+        {
+            return new Vector3(root.x, 0f, root.z)
+                 + move * (0.22f + 0.30f * swing)
+                 + right * side * 0.26f
+                 + Vector3.up * 0.07f;
+        }
         return new Vector3(root.x, 0f, root.z)
              + move * (0.50f + 0.36f * swing)
              + right * side * 0.40f
@@ -319,7 +348,13 @@ public class DeltaGirlCrawler : MonoBehaviour
     static Vector3 FootTarget(Transform thigh, Vector3 move, Vector3 right, float side, float swing)
     {
         Vector3 root = thigh ? thigh.position : Vector3.zero;
-        // swing+ = noha víc vpřed (míň vzadu)
+        if (!AllFours)
+        {
+            return new Vector3(root.x, 0f, root.z)
+                 - move * (0.88f - 0.10f * swing)
+                 + right * side * 0.11f
+                 + Vector3.up * 0.07f;
+        }
         return new Vector3(root.x, 0f, root.z)
              - move * (0.42f - 0.30f * swing)
              + right * side * 0.22f
@@ -406,7 +441,12 @@ public class DeltaGirlCrawler : MonoBehaviour
     // DELTA má sukňové kosti – mírně je svěsíme dolů (bez trhání).
     void DrapeSkirt()
     {
-        Vector3 want = Vector3.down;
+        Vector3 want = AllFours
+            ? Vector3.down
+            : (Vector3.down * 0.45f - MoveDir() * 0.85f);
+        if (want.sqrMagnitude < 1e-6f) want = Vector3.down;
+        want.Normalize();
+        float maxDeg = AllFours ? 28f : 42f;
         foreach (var tr in GetComponentsInChildren<Transform>(true))
         {
             string n = tr.name;
@@ -419,7 +459,7 @@ public class DeltaGirlCrawler : MonoBehaviour
             if (ang < 10f) continue;
             Vector3 axis = Vector3.Cross(along, want);
             if (axis.sqrMagnitude < 1e-8f) continue;
-            tr.rotation = Quaternion.AngleAxis(Mathf.Min(ang, 28f), axis.normalized) * tr.rotation;
+            tr.rotation = Quaternion.AngleAxis(Mathf.Min(ang, maxDeg), axis.normalized) * tr.rotation;
         }
     }
 
