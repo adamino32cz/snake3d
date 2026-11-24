@@ -3972,9 +3972,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   lookId: delta
   modelScale: 1.9
-  hipBack: 0.75
-  hipHeight: 0.5
-  torsoLean: 16
+  hipBack: 1.1
+  hipHeight: 0.7
+  torsoLean: 82
   crawlSpeed: 6
   hairLengthScale: 1
 --- !u!1 &7891940871391763855

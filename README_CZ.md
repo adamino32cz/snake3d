@@ -116,9 +116,9 @@ Na úvodní obrazovce je tlačítko **SKINY** (nebo klávesa **K**). Jsou tu čt
 
 Barvy hada (hlava, tělo, záře) bere `SnakeController` z katalogu v `Assets/Scripts/SkinData.cs` (`SkinCatalog.All`). **Nový skin přidáš** jako další položku v tom poli: `id`, `displayName`, `headColor`, `bodyColor`, `emissionColor` (záře pro bloom, klidně jasnější než bílá), volitelně `secret` + `unlockCode`. Pole `customHeadId` umí vlastní model hlavy.
 
-Tajný skin **DELTA** (kód `DELTA`, test: `-skin delta`) nahradí hadí hlavu anime postavou (VRoid HairSample_Female, viz licence níže) – kočičí dívka s tmavými culíky a původními barvami modelu. Postava je vzpřímená (lamia: trup stojí, nohy jsou schované do ocasu), vysoká zhruba tři políčka, a články těla hada jsou její rostoucí tmavě fialovo-černý chlupatý ocas, který plynule navazuje na boky, ke špičce se zužuje a zesvětluje.
+Tajný skin **DELTA** (kód `DELTA`, test: `-skin delta`) nahradí hadí hlavu anime postavou (VRoid HairSample_Female, viz licence níže) – kočičí dívka s tmavými culíky a původními barvami modelu. Postava leze po čtyřech (ruce a kolena, hlava vzhůru dopředu), je pořád velká (zhruba tři políčka), a články těla hada jsou její rostoucí tmavě fialovo-černý chlupatý ocas, který plynule navazuje na boky, ke špičce se zužuje a zesvětluje.
 
-Druhý tajný skin **MIKU** (kód `MIKU`, test: `-skin miku`) používá model Tda-style Hatsune Miku (V4X), stažený bez přihlášení z veřejného GitHubu (viz licence níže). Stejné lamia nastavení (vzpřímený trup, tyrkysový ocas). Postava Hatsune Miku je dílo Crypton Future Media (Piapro Character License), modelace Tda, konverze VRM: Jjinomu.
+Druhý tajný skin **MIKU** (kód `MIKU`, test: `-skin miku`) používá model Tda-style Hatsune Miku (V4X), stažený bez přihlášení z veřejného GitHubu (viz licence níže). Stejné plazení po čtyřech, tyrkysový ocas od boků. Postava Hatsune Miku je dílo Crypton Future Media (Piapro Character License), modelace Tda, konverze VRM: Jjinomu.
 
 Klávesa **C** přepíná tři pohledy kamery (funguje u všech skinů): výchozí přehled shora, 3. osoba (za a nad hlavou, plynule sleduje směr pohybu) a 1. osoba (z hlavy dopředu, model hlavy se skryje). V 3. a 1. osobě šipka/A/D zatáčí relativně ke směru hada; v přehledu zůstává ovládání podle světových stran. Tělo hada je vizuálně spojitá trubka, ne řada teček.
 

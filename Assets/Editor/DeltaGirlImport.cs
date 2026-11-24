@@ -133,8 +133,8 @@ public static class DeltaGirlBuilder
         crawler.lookId = lookId;
         crawler.hairLengthScale = hairLength;
         crawler.modelScale = 1.9f;
-        crawler.hipBack = 0.75f;
-        crawler.hipHeight = 0.50f;
+        crawler.hipBack = 1.10f;
+        crawler.hipHeight = 0.70f;
 
         var prefab = PrefabUtility.SaveAsPrefabAsset(wrap, prefabPath);
         Object.DestroyImmediate(wrap);
@@ -270,8 +270,8 @@ public static class DeltaGirlBuilder
         crawler.lookId = "miku";
         crawler.hairLengthScale = 1f;
         crawler.modelScale = 1.9f;
-        crawler.hipBack = 1.25f;
-        crawler.hipHeight = 0.50f;
+        crawler.hipBack = 1.10f;
+        crawler.hipHeight = 0.70f;
 
         PrefabUtility.SaveAsPrefabAsset(wrap, PrefabMiku);
         Object.DestroyImmediate(wrap);

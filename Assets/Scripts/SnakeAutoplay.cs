@@ -263,21 +263,21 @@ public class SnakeAutoplay : MonoBehaviour
         if (rig) rig.enabled = false;
         float oldScale = Time.timeScale; Time.timeScale = 0.08f;
         Transform h = snake.transform;
-        // 3/4 záběr na vzpřímenou postavu (obličej / trup)
-        cam.transform.position = h.position + h.forward * 4.4f + h.right * 2.5f + Vector3.up * 3.1f;
-        cam.transform.LookAt(h.position + Vector3.up * 1.7f);
+        // 3/4 záběr na postavu lezoucí po čtyřech
+        cam.transform.position = h.position + h.forward * 3.8f + h.right * 2.4f + Vector3.up * 1.85f;
+        cam.transform.LookAt(h.position + Vector3.up * 0.50f - h.forward * 0.35f);
         yield return new WaitForSecondsRealtime(0.45f);
         Shot($"01e_{id}_closeup.png");
         yield return new WaitForSecondsRealtime(0.3f);
-        // bližší pohled na obličej zepředu
-        cam.transform.position = h.position + h.forward * 3.6f + h.right * 0.7f + Vector3.up * 2.3f;
-        cam.transform.LookAt(h.position + Vector3.up * 1.85f);
+        // bližší pohled na obličej zepředu (níž)
+        cam.transform.position = h.position + h.forward * 2.6f + h.right * 0.55f + Vector3.up * 1.15f;
+        cam.transform.LookAt(h.position + Vector3.up * 0.50f);
         yield return new WaitForSecondsRealtime(0.45f);
         Shot($"01e2_{id}_face.png");
         yield return new WaitForSecondsRealtime(0.3f);
-        // pohled mírně shora podél ocasu
-        cam.transform.position = h.position + h.forward * 0.4f + h.right * 0.7f + Vector3.up * 5.2f;
-        cam.transform.LookAt(h.position - h.forward * 2.0f + Vector3.up * 0.7f);
+        // pohled shora podél ocasu
+        cam.transform.position = h.position - h.forward * 0.2f + h.right * 0.7f + Vector3.up * 4.4f;
+        cam.transform.LookAt(h.position - h.forward * 1.8f + Vector3.up * 0.30f);
         yield return new WaitForSecondsRealtime(0.45f);
         Shot($"01f_{id}_tail_closeup.png");
         yield return new WaitForSecondsRealtime(0.3f);

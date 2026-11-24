@@ -79,9 +79,9 @@ public class CameraRig : MonoBehaviour
             Quaternion wantRot;
             if (View == CameraView.ThirdPerson)
             {
-                // za postavou, mírně nad ní, pohled dopředu a trochu dolů (ocas pod/za ní)
-                wantPos = target.position - fwd * 5.2f + Vector3.up * 2.15f;
-                Vector3 look = target.position + Vector3.up * 0.85f + fwd * 1.2f;
+                // za lezoucí postavou, níž, pohled dopředu podél těla a ocasu
+                wantPos = target.position - fwd * 5.8f + Vector3.up * 1.55f;
+                Vector3 look = target.position + Vector3.up * 0.40f + fwd * 1.5f;
                 wantRot = Quaternion.LookRotation((look - wantPos).normalized, Vector3.up);
             }
             else
