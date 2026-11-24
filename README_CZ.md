@@ -54,7 +54,8 @@ Vše je v datech: `LevelData.cs` (enum `Objective` = druh úkolu: `EatFood`, `Ea
 **Ovládání.**
 - Úvodní obrazovka: **1–9, 0** nebo šipky vlevo/vpravo = výběr odemčeného levelu, **mezerník** = start, **K** nebo tlačítko **SKINY** = menu vzhledů hada.
 - Menu SKINY: šipky nebo klik = výběr, Enter = zvolit (odemčený), pole na tajný kód + **OK**, **Esc** nebo **ZPĚT** = zpět na úvod. Výběr a odemčení se ukládají.
-- Hra: **W/A/S/D** nebo šipky (otočka o 180° není možná), **Esc** nebo **P** = pauza.
+- Hra: **W/A/S/D** nebo šipky (otočka o 180° není možná), **Esc** nebo **P** = pauza (tlačítka Pokračovat / Menu, **M** nebo **Q** = úvodní menu).
+- Konec hry: **Hrát znovu** (**R** / mezerník) nebo **Menu** (**Esc** / **M**) zpět na úvod. Skiny a rekordy zůstanou.
 - Pauza: šipky vlevo/vpravo = hlasitost hudby, nahoru/dolů = hlasitost zvuků (uloží se), **R** = znovu, **Q** = úvodní obrazovka.
 - Konec hry: napiš jméno + Enter (když jsi v TOP 10), pak **R** / mezerník / tlačítko „Hrát znovu“.
 

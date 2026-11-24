@@ -22,7 +22,7 @@ public class DeltaGirlCrawler : MonoBehaviour
     Quaternion lUpperLeg0, lLowerLeg0, rUpperLeg0, rLowerLeg0;
     bool mapped, hairScaled, mmd;
     int fitFrames = 4;
-    Transform beautyLight, rimLight;
+    Transform beautyLight, rimLight, safetyShorts;
 
     public static DeltaGirlCrawler Attach(Transform headParent, GameObject prefab, string lookId)
     {
@@ -213,6 +213,8 @@ public class DeltaGirlCrawler : MonoBehaviour
         LiftHead();
         ApplyCrawlGait();
         PlaceLights(MoveDir());
+        DrapeSkirt();
+        PlaceSafetyShorts();
     }
 
     void ResetBind()
@@ -370,4 +372,55 @@ public class DeltaGirlCrawler : MonoBehaviour
         if (wantLower.sqrMagnitude < 1e-10f) return;
         b.rotation = Quaternion.FromToRotation(curLower, wantLower.normalized) * b.rotation;
     }
+
+    // Tmavé „safety shorts“ pod sukní, ať 3. osoba nikdy nekouká pod šaty.
+    void PlaceSafetyShorts()
+    {
+        if (!hips) return;
+        if (!safetyShorts)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            go.name = "SafetyShorts";
+            var col = go.GetComponent<Collider>();
+            if (col) Destroy(col);
+            var r = go.GetComponent<Renderer>();
+            var sh = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Universal Render Pipeline/Lit");
+            if (sh)
+            {
+                var mat = new Material(sh);
+                mat.SetColor("_BaseColor", new Color(0.05f, 0.04f, 0.06f, 1f));
+                if (r) r.sharedMaterial = mat;
+            }
+            else if (r) r.material.color = new Color(0.05f, 0.04f, 0.06f, 1f);
+            if (r) { r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false; }
+            go.transform.SetParent(transform, true);
+            safetyShorts = go.transform;
+        }
+        Vector3 move = MoveDir();
+        safetyShorts.position = hips.position + Vector3.down * 0.10f + move * 0.02f;
+        safetyShorts.rotation = Quaternion.identity;
+        float ls = Mathf.Max(0.01f, transform.lossyScale.x);
+        safetyShorts.localScale = new Vector3(0.42f, 0.16f, 0.34f) / ls;
+    }
+
+    // DELTA má sukňové kosti – mírně je svěsíme dolů (bez trhání).
+    void DrapeSkirt()
+    {
+        Vector3 want = Vector3.down;
+        foreach (var tr in GetComponentsInChildren<Transform>(true))
+        {
+            string n = tr.name;
+            if (n.IndexOf("Skirt", System.StringComparison.OrdinalIgnoreCase) < 0) continue;
+            if (n.EndsWith("_end")) continue;
+            if (tr.childCount == 0) continue;
+            Vector3 along = tr.GetChild(0).position - tr.position;
+            if (along.sqrMagnitude < 1e-8f) continue;
+            float ang = Vector3.Angle(along, want);
+            if (ang < 10f) continue;
+            Vector3 axis = Vector3.Cross(along, want);
+            if (axis.sqrMagnitude < 1e-8f) continue;
+            tr.rotation = Quaternion.AngleAxis(Mathf.Min(ang, 28f), axis.normalized) * tr.rotation;
+        }
+    }
+
 }

@@ -204,6 +204,15 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
+    // Zpět na úvodní obrazovku. Skiny a rekordy (PlayerPrefs) zůstanou.
+    public void ReturnToMenu()
+    {
+        Time.timeScale = 1f;
+        skipTitle = false;
+        if (cameraRig) cameraRig.SetView(CameraView.Overview);
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
     void Update()
     {
         PulseToMusic();
@@ -246,6 +255,7 @@ public class GameManager : MonoBehaviour
         if (state == State.Over)
         {
             if (Input.GetKeyDown(KeyCode.R) || Input.GetKeyDown(KeyCode.Space)) RestartGame();
+            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.M)) ReturnToMenu();
             return;
         }
         surviveTime += Time.deltaTime;
@@ -351,6 +361,7 @@ public class GameManager : MonoBehaviour
             string extra = cameraRig.View == CameraView.Overview
                 ? ""
                 : "  (vlevo/vpravo zatáčí podle hada)";
+            hintText.fontSize = 24;
             hintText.text = "Kamera: " + CameraRig.ViewLabel(cameraRig.View) + extra;
             hintText.alpha = 1f;
             StopCoroutine(nameof(FadeCamHint));
@@ -496,11 +507,13 @@ public class GameManager : MonoBehaviour
         UpdatePauseText();
     }
 
+    public void ResumePlay() => SetPaused(false);
+
     // V pauze: R = znovu, Q = úvodní obrazovka, šipky = hlasitost
     void PauseMenuInput()
     {
         if (Input.GetKeyDown(KeyCode.R)) { RestartGame(); return; }
-        if (Input.GetKeyDown(KeyCode.Q)) { Time.timeScale = 1f; skipTitle = false; SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex); return; }
+        if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.M)) { ReturnToMenu(); return; }
         if (!sound) return;
         bool changed = true;
         if (Input.GetKeyDown(KeyCode.RightArrow)) sound.musicVolume = Mathf.Clamp01(sound.musicVolume + 0.1f);
@@ -517,7 +530,7 @@ public class GameManager : MonoBehaviour
         string mv = sound ? Bar(sound.musicVolume) : "-", ev = sound ? Bar(sound.effectsVolume) : "-";
         pauseText.text = $"Hudba  {mv}   <size=70%>(šipky vlevo/vpravo)</size>\n" +
                          $"Zvuky  {ev}   <size=70%>(šipky nahoru/dolů)</size>\n\n" +
-                         "<size=80%>Esc = pokračovat    R = znovu    Q = menu</size>";
+                         "<size=80%>Esc = pokračovat    R = znovu    M / Q = menu</size>";
     }
 
     // Ukazatel hlasitosti z čárek, např. "||||||----"
@@ -659,7 +672,7 @@ public class GameManager : MonoBehaviour
         if (gameOverText) gameOverText.text =
             $"{endReason}\n\n<size=130%>Skóre: <color=#FFE14D>{score}</color></size>\nRekord: {best}\nLevel: {level + 1}" +
             (rank > 0 ? $"\n<color=#FF40D0>{rank}. místo v TOP 10!</color>" : "") +
-            "\n\n<size=70%>[R] nebo mezerník = znovu</size>";
+            "\n\n<size=70%>[R] / mezerník = znovu    Esc / M = menu</size>";
         if (highScoreText) highScoreText.text = HighScores.Format(rank);
     }
 

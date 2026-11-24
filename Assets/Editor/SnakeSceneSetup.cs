@@ -555,8 +555,8 @@ public static class SnakeSceneSetup
         gm.powerText = Text(ct, "PowerText", new Vector2(1, 1), new Vector2(-40, -150), TextAlignmentOptions.TopRight, 30, fontPlain);
         gm.powerText.rectTransform.sizeDelta = new Vector2(900, 60);
         // nápověda při první hře (dole uprostřed)
-        gm.hintText = Text(ct, "HintText", new Vector2(0.5f, 0), new Vector2(0, 150), TextAlignmentOptions.Center, 36, fontPlain);
-        gm.hintText.rectTransform.sizeDelta = new Vector2(1500, 140); gm.hintText.text = "";
+        gm.hintText = Text(ct, "HintText", new Vector2(0.5f, 0), new Vector2(0, 130), TextAlignmentOptions.Center, 24, fontPlain);
+        gm.hintText.rectTransform.sizeDelta = new Vector2(1400, 80); gm.hintText.text = "";
         // velký nápis "NOVÝ REKORD!"
         gm.bannerText = Text(ct, "BannerText", new Vector2(0.5f, 0.5f), new Vector2(0, 260), TextAlignmentOptions.Center, 96, NeonFontMat("NeonText_Gold", new Color(1f, 0.75f, 0.1f)));
         gm.bannerText.rectTransform.sizeDelta = new Vector2(1700, 260); gm.bannerText.text = "";
@@ -639,6 +639,12 @@ public static class SnakeSceneSetup
         var pText = Text(pause.transform, "PauseText", new Vector2(0.5f, 0.5f), new Vector2(0, -60), TextAlignmentOptions.Center, 44, fontPlain);
         pText.rectTransform.sizeDelta = new Vector2(1500, 320);
         gm.pausePanel = pause; gm.pauseText = pText;
+        var btnPauseResume = UiButton(pause.transform, "ResumeButton", new Vector2(0.5f, 0.5f), new Vector2(-230, -280), new Vector2(400, 90), "POKRAČOVAT", fontCyan,
+                                      new Color(0.02f, 0.15f, 0.2f), Cyan);
+        UnityEventTools.AddPersistentListener(btnPauseResume.GetComponent<Button>().onClick, gm.ResumePlay);
+        var btnPauseMenu = UiButton(pause.transform, "MenuButton", new Vector2(0.5f, 0.5f), new Vector2(230, -280), new Vector2(400, 90), "MENU", fontMagenta,
+                                    new Color(0.12f, 0.02f, 0.12f), Magenta);
+        UnityEventTools.AddPersistentListener(btnPauseMenu.GetComponent<Button>().onClick, gm.ReturnToMenu);
         pause.SetActive(false);
 
         // Konec hry: ztmavení + rámeček s neonovým okrajem
@@ -660,16 +666,14 @@ public static class SnakeSceneSetup
         gm.highScoreText = hs;
         gm.gameOverText = got; gm.gameOverPanel = panel;
 
-        var btnGo = new GameObject("RestartButton", typeof(RectTransform), typeof(Image), typeof(Button), typeof(Outline));
-        btnGo.transform.SetParent(box.transform, false);
-        var brt = btnGo.GetComponent<RectTransform>();
-        brt.anchorMin = brt.anchorMax = new Vector2(0.5f, 0.5f);
-        brt.anchoredPosition = new Vector2(0, -300); brt.sizeDelta = new Vector2(420, 100);
-        btnGo.GetComponent<Image>().color = new Color(0.02f, 0.15f, 0.2f);
-        var bol = btnGo.GetComponent<Outline>(); bol.effectColor = Cyan; bol.effectDistance = new Vector2(4, -4);
-        var bt = Text(btnGo.transform, "Label", new Vector2(0.5f, 0.5f), Vector2.zero, TextAlignmentOptions.Center, 46, fontCyan);
-        bt.text = "HRÁT ZNOVU"; bt.rectTransform.sizeDelta = brt.sizeDelta;
+        var btnGo = UiButton(box.transform, "RestartButton", new Vector2(0.5f, 0.5f), new Vector2(-240, -300), new Vector2(420, 100), "HRÁT ZNOVU", fontCyan,
+                             new Color(0.02f, 0.15f, 0.2f), Cyan);
+        btnGo.GetComponentInChildren<TextMeshProUGUI>().fontSize = 42;
         UnityEventTools.AddPersistentListener(btnGo.GetComponent<Button>().onClick, gm.RestartGame);
+        var btnMenu = UiButton(box.transform, "MenuButton", new Vector2(0.5f, 0.5f), new Vector2(240, -300), new Vector2(420, 100), "MENU", fontMagenta,
+                               new Color(0.12f, 0.02f, 0.12f), Magenta);
+        btnMenu.GetComponentInChildren<TextMeshProUGUI>().fontSize = 42;
+        UnityEventTools.AddPersistentListener(btnMenu.GetComponent<Button>().onClick, gm.ReturnToMenu);
         panel.SetActive(false);
     }
 

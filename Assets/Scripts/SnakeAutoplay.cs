@@ -21,6 +21,7 @@ public class SnakeAutoplay : MonoBehaviour
     GridArena arena;
     bool steering = true;
     string shotDir;
+    static bool pendingTitleShot;
 
     static bool HasArg(string a) => System.Array.IndexOf(CmdArgs.Get(), a) >= 0;
 
@@ -43,12 +44,64 @@ public class SnakeAutoplay : MonoBehaviour
         var args = CmdArgs.Get();
         int i = System.Array.IndexOf(args, "-shotdir");
         shotDir = i >= 0 && i + 1 < args.Length ? args[i + 1] : Path.Combine(Application.dataPath, "..", "Screenshots");
-        if (HasArg("-screenshots") && HasArg("-openskins")) StartCoroutine(ShotSkins());
+        if (pendingTitleShot && HasArg("-screenshots")) { StartCoroutine(ShotTitleAfterMenu()); return; }
+        if (HasArg("-screenshots") && HasArg("-shotgameover")) StartCoroutine(ShotGameOverMenu());
+        else if (HasArg("-screenshots") && HasArg("-openskins")) StartCoroutine(ShotSkins());
         else if (HasArg("-screenshots") && ShotFoodKind() != null) StartCoroutine(ShotObjectiveFood());
         else if (HasArg("-screenshots") && IsCharacterSkin()) StartCoroutine(ShotCharacter());
         else if (HasArg("-screenshots")) { StartCoroutine(TakeShots()); StartCoroutine(WatchLevels()); }
         else if (HasArg("-openskins")) gm.OpenSkinMenu();
         else gm.BeginPlay(); // bez fotek rovnou hrajeme (přeskočí úvodní obrazovku)
+    }
+
+
+    IEnumerator ShotGameOverMenu()
+    {
+        Directory.CreateDirectory(shotDir);
+        var delta = SkinCatalog.Get("delta");
+        var miku = SkinCatalog.Get("miku");
+        if (delta != null) SkinCatalog.Unlock(delta);
+        if (miku != null) SkinCatalog.Unlock(miku);
+
+        yield return new WaitForSeconds(0.35f);
+        if (miku != null && SkinCatalog.Select("miku") && snake) snake.ApplySkin(SkinCatalog.Current());
+        if (gm) gm.BeginPlay();
+        if (snake) snake.Grow(12);
+        yield return new WaitForSeconds((snake ? snake.stepInterval : 0.16f) * 6f + 0.25f);
+        if (snake) snake.Stop();
+        var cam = Camera.main;
+        var rig = cam ? cam.GetComponent<CameraRig>() : null;
+        if (rig) { rig.enabled = true; rig.SetView(CameraView.ThirdPerson); }
+        if (snake) snake.ApplyCameraView(CameraView.ThirdPerson);
+        yield return new WaitForSeconds(0.8f);
+        Shot("03_third_miku.png");
+        yield return new WaitForSeconds(0.2f);
+
+        if (delta != null && SkinCatalog.Select("delta") && snake) snake.ApplySkin(SkinCatalog.Current());
+        if (rig) { rig.SetView(CameraView.ThirdPerson); }
+        if (snake) snake.ApplyCameraView(CameraView.ThirdPerson);
+        yield return new WaitForSeconds(0.7f);
+        Shot("04_third_delta.png");
+        yield return new WaitForSeconds(0.2f);
+
+        if (rig) rig.SetView(CameraView.Overview);
+        if (snake) snake.ApplyCameraView(CameraView.Overview);
+        if (gm) gm.GameOver("Narazil jsi!");
+        yield return new WaitForSeconds(1.35f);
+        Shot("01_gameover.png");
+        yield return new WaitForSeconds(0.25f);
+        pendingTitleShot = true;
+        if (gm) gm.ReturnToMenu();
+    }
+
+    IEnumerator ShotTitleAfterMenu()
+    {
+        pendingTitleShot = false;
+        Directory.CreateDirectory(shotDir);
+        yield return new WaitForSeconds(0.7f);
+        Shot("02_title_after_menu.png");
+        yield return new WaitForSeconds(0.2f);
+        Application.Quit();
     }
 
     static string ShotFoodKind()
