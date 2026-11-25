@@ -353,15 +353,17 @@ public class SnakeController : MonoBehaviour
         if (n - start < 2 && pts.Count == 0) { tailTube.Hide(); return; }
         for (int i = start; i < n; i++)
         {
-            pts.Add(segments[i].position);
-            float s = segments[i].localScale.x;
-            rads.Add(Mathf.Max(0.08f, s * 0.52f));
+            Vector3 p = segments[i].position;
+            p.y = Mathf.Max(p.y, 0.18f);
+            pts.Add(p);
+            float sc = segments[i].localScale.x;
+            rads.Add(Mathf.Max(0.08f, sc * 0.52f));
         }
         if (pts.Count < 2) { tailTube.Hide(); return; }
         var mat = (HasCharacter && tailMaterial) ? tailMaterial : bodyMaterial;
         Color emit = emissionColor * (HasCharacter ? 0.7f : 1f);
         if (HasCharacter && characterLook == "miku") emit = new Color(0.25f, 1.1f, 1.0f);
-        else if (HasCharacter) emit = new Color(0.7f, 0.35f, 1.1f);
+        else if (HasCharacter) emit = new Color(1.05f, 0.55f, 1.45f);
         tailTube.Rebuild(pts, rads, mat, emit, HasCharacter, characterLook == "miku");
     }
 

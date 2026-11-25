@@ -31,6 +31,11 @@ public class DeltaGirlCrawler : MonoBehaviour
         return AllFours;
     }
 
+    public bool MixamoReady { get; private set; }
+    Animator mixAnim;
+    Avatar humanAvatar;
+    const float MixamoYaw = 0f;
+
     public Transform HeadBone => head;
 
     Transform hips, spine, chest, upperChest, neck, head;
@@ -94,6 +99,55 @@ public class DeltaGirlCrawler : MonoBehaviour
         rUpperLeg0 = Rest(rUpperLeg); rLowerLeg0 = Rest(rLowerLeg);
         LengthenHair();
         EnsureLights();
+        SetupMixamoAnimator();
+    }
+
+    void SetupMixamoAnimator()
+    {
+        humanAvatar = null;
+        foreach (var a in GetComponentsInChildren<Animator>(true))
+        {
+            if (a.avatar && a.avatar.isValid && a.avatar.isHuman)
+            {
+                humanAvatar = a.avatar;
+                break;
+            }
+        }
+        if (humanAvatar == null)
+        {
+            string key = lookId == "miku" ? "MikuHuman" : "DeltaHuman";
+            var built = Resources.Load<Avatar>(key);
+            if (built && built.isValid && built.isHuman) humanAvatar = built;
+        }
+        MixamoReady = humanAvatar != null;
+        if (!MixamoReady)
+        {
+            if (mixAnim) mixAnim.enabled = false;
+            return;
+        }
+        if (!mixAnim)
+        {
+            mixAnim = GetComponent<Animator>();
+            if (!mixAnim) mixAnim = gameObject.AddComponent<Animator>();
+        }
+        mixAnim.avatar = humanAvatar;
+        mixAnim.applyRootMotion = false;
+        mixAnim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        var ctrl = Resources.Load<RuntimeAnimatorController>("CrawlAnim");
+        if (ctrl) mixAnim.runtimeAnimatorController = ctrl;
+        ApplyCrawlStyle();
+    }
+
+    public void ApplyCrawlStyle()
+    {
+        bool use = MixamoReady && CrawlStyle.IsMixamoCurrent && mixAnim;
+        if (!mixAnim) return;
+        mixAnim.enabled = use;
+        if (use)
+        {
+            string st = CrawlStyle.AnimatorState(CrawlStyle.Current);
+            if (!string.IsNullOrEmpty(st)) mixAnim.Play(st, 0, 0f);
+        }
     }
 
     static Quaternion Rest(Transform t) => t ? t.localRotation : Quaternion.identity;
@@ -226,17 +280,48 @@ public class DeltaGirlCrawler : MonoBehaviour
     {
         if (!mapped || !isActiveAndEnabled) return;
         transform.localScale = Vector3.one * modelScale;
+        if (MixamoReady && CrawlStyle.IsMixamoCurrent)
+        {
+            ApplyCrawlStyle();
+            PlaceAnimated();
+            PlaceLights(MoveDir());
+            DrapeSkirt();
+            PlaceSafetyShorts();
+            return;
+        }
+        if (mixAnim) mixAnim.enabled = false;
         transform.localRotation = Quaternion.identity;
         ResetBind();
         AlignCrawl();
         AutoFit();
-        if (!AllFours)
-            transform.Rotate(MoveDir(), Mathf.Sin(GaitPhase()) * 6.5f, Space.World);
         LiftHead();
         ApplyCrawlGait();
         PlaceLights(MoveDir());
         DrapeSkirt();
         PlaceSafetyShorts();
+    }
+
+    void PlaceAnimated()
+    {
+        Vector3 move = MoveDir();
+        if (move.sqrMagnitude < 1e-8f) move = Vector3.forward;
+        transform.rotation = Quaternion.LookRotation(move, Vector3.up) * Quaternion.Euler(0f, MixamoYaw, 0f);
+        Vector3 head = transform.parent ? transform.parent.position : transform.position;
+        Vector3 want = head - move * 0.55f;
+        want.y = 0.02f;
+        if (hips)
+        {
+            Vector3 d = want - hips.position;
+            d.y = 0f;
+            transform.position += d;
+        }
+        else transform.position = want;
+        float minY = transform.position.y;
+        if (lFoot) minY = Mathf.Min(minY, lFoot.position.y);
+        if (rFoot) minY = Mathf.Min(minY, rFoot.position.y);
+        if (lHand) minY = Mathf.Min(minY, lHand.position.y);
+        if (rHand) minY = Mathf.Min(minY, rHand.position.y);
+        transform.position += Vector3.up * (0.04f - minY);
     }
 
     void ResetBind()
@@ -267,7 +352,7 @@ public class DeltaGirlCrawler : MonoBehaviour
         transform.rotation = Quaternion.FromToRotation(spineDir.normalized, Vector3.up) * transform.rotation;
         transform.Rotate(Vector3.up, 180f, Space.World);
         Vector3 right = Vector3.Cross(Vector3.up, move);
-        float lean = AllFours ? torsoLean : 88f;
+        float lean = AllFours ? torsoLean : 90f;
         if (right.sqrMagnitude > 1e-6f)
             transform.Rotate(right.normalized, lean, Space.World);
     }
@@ -279,8 +364,8 @@ public class DeltaGirlCrawler : MonoBehaviour
         if (right.sqrMagnitude < 1e-6f) return;
         right.Normalize();
         // po předklonu hledí do země – zvedneme krk a hlavu, ať kouká dopředu
-        if (neck) neck.Rotate(right, AllFours ? -52f : -58f, Space.World);
-        if (head) head.Rotate(right, AllFours ? -28f : -32f, Space.World);
+        if (neck) neck.Rotate(right, AllFours ? -52f : -48f, Space.World);
+        if (head) head.Rotate(right, AllFours ? -28f : -24f, Space.World);
     }
 
     void AutoFit()
@@ -289,7 +374,7 @@ public class DeltaGirlCrawler : MonoBehaviour
         Vector3 move = MoveDir();
         float torso = head ? Vector3.Distance(hips.position, head.position) : 1.2f;
         Vector3 desired = transform.parent.position - move * Mathf.Max(0.95f, torso * 0.82f);
-        desired.y = AllFours ? (hipHeight > 0.2f ? hipHeight : 0.70f) : 0.28f;
+        desired.y = AllFours ? (hipHeight > 0.2f ? hipHeight : 0.70f) : 0.24f;
         transform.position += desired - hips.position;
     }
 
@@ -316,14 +401,14 @@ public class DeltaGirlCrawler : MonoBehaviour
         float rSwing = -lSwing;
 
         // póly blíž k tělu, ať se nohy a lokty nerozjíždějí do stran
-        float handOut = AllFours ? 0.7f : 0.25f;
-        float footOut = AllFours ? 0.35f : 0.10f;
+        float handOut = AllFours ? 0.55f : 0.18f;
+        float footOut = AllFours ? 0.22f : 0.04f;
         TwoBoneReach(lUpper, lLower, lHand, lUpper0, lLower0,
             HandTarget(lUpper, move, right, -1f, lSwing),
-            (lUpper ? lUpper.position : Vector3.zero) + right * -handOut + Vector3.up * 0.3f - move * 0.1f);
+            (lUpper ? lUpper.position : Vector3.zero) + right * -handOut + Vector3.up * 0.10f - move * 0.15f);
         TwoBoneReach(rUpper, rLower, rHand, rUpper0, rLower0,
             HandTarget(rUpper, move, right,  1f, rSwing),
-            (rUpper ? rUpper.position : Vector3.zero) + right *  handOut + Vector3.up * 0.3f - move * 0.1f);
+            (rUpper ? rUpper.position : Vector3.zero) + right *  handOut + Vector3.up * 0.10f - move * 0.15f);
 
         TwoBoneReach(lUpperLeg, lLowerLeg, lFoot, lUpperLeg0, lLowerLeg0,
             FootTarget(lUpperLeg, move, right, -1f, -lSwing),
@@ -339,9 +424,9 @@ public class DeltaGirlCrawler : MonoBehaviour
         if (!AllFours)
         {
             return new Vector3(root.x, 0f, root.z)
-                 + move * (0.18f + 0.36f * swing)
-                 + right * side * 0.22f
-                 + Vector3.up * (0.12f + 0.03f * Mathf.Max(0f, swing));
+                 + move * (0.22f + 0.20f * swing)
+                 + right * side * 0.12f
+                 + Vector3.up * 0.12f;
         }
         return new Vector3(root.x, 0f, root.z)
              + move * (0.50f + 0.36f * swing)
@@ -356,9 +441,9 @@ public class DeltaGirlCrawler : MonoBehaviour
         {
             // nohy u sebe, natažené vzad, nad zemí (ne skrz podlahu)
             return new Vector3(root.x, 0f, root.z)
-                 - move * (0.95f - 0.08f * swing)
-                 + right * side * 0.045f
-                 + Vector3.up * 0.11f;
+                 - move * 0.92f
+                 + right * side * 0.03f
+                 + Vector3.up * 0.12f;
         }
         return new Vector3(root.x, 0f, root.z)
              - move * (0.42f - 0.30f * swing)
@@ -437,10 +522,21 @@ public class DeltaGirlCrawler : MonoBehaviour
             safetyShorts = go.transform;
         }
         Vector3 move = MoveDir();
-        safetyShorts.position = hips.position + Vector3.down * 0.10f + move * 0.02f;
-        safetyShorts.rotation = Quaternion.identity;
+        if (move.sqrMagnitude < 1e-6f) move = Vector3.forward;
         float ls = Mathf.Max(0.01f, transform.lossyScale.x);
-        safetyShorts.localScale = new Vector3(0.52f, 0.20f, 0.42f) / ls;
+        if (!AllFours)
+        {
+            // pod sukní podél stehen, ať 3. osoba nevidí odkrytá stehna
+            safetyShorts.position = hips.position - move * 0.32f + Vector3.down * 0.05f;
+            safetyShorts.rotation = Quaternion.LookRotation(move, Vector3.up);
+            safetyShorts.localScale = new Vector3(0.46f, 0.20f, 1.05f) / ls;
+        }
+        else
+        {
+            safetyShorts.position = hips.position + Vector3.down * 0.10f + move * 0.02f;
+            safetyShorts.rotation = Quaternion.identity;
+            safetyShorts.localScale = new Vector3(0.52f, 0.20f, 0.42f) / ls;
+        }
     }
 
     // DELTA má sukňové kosti – mírně je svěsíme dolů (bez trhání).
@@ -448,10 +544,10 @@ public class DeltaGirlCrawler : MonoBehaviour
     {
         Vector3 want = AllFours
             ? Vector3.down
-            : (Vector3.down * 0.45f - MoveDir() * 0.85f);
+            : (Vector3.down * 0.25f - MoveDir() * 1.0f);
         if (want.sqrMagnitude < 1e-6f) want = Vector3.down;
         want.Normalize();
-        float maxDeg = AllFours ? 28f : 42f;
+        float maxDeg = AllFours ? 28f : 70f;
         foreach (var tr in GetComponentsInChildren<Transform>(true))
         {
             string n = tr.name;

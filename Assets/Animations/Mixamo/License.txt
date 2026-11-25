@@ -1,0 +1,3 @@
+Animations: Mixamo (Adobe), used under Mixamo license.
+Downloaded by the project owner from Mixamo as "FBX for Unity", Without Skin, Mixamo rig.
+These animation clips are included in this school project with credit to Mixamo / Adobe.

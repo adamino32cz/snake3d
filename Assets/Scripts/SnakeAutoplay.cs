@@ -47,6 +47,8 @@ public class SnakeAutoplay : MonoBehaviour
         DeltaGirlCrawler.AllFours = false;
         if (pendingTitleShot && HasArg("-screenshots")) { StartCoroutine(ShotTitleAfterMenu()); return; }
         if (HasArg("-screenshots") && HasArg("-shotnormal")) { StartCoroutine(ShotNormalSkin()); return; }
+        if (HasArg("-screenshots") && HasArg("-shotv10")) { StartCoroutine(ShotV10()); return; }
+        if (HasArg("-screenshots") && HasArg("-shotmixamo")) { StartCoroutine(ShotMixamo()); return; }
         if (HasArg("-screenshots") && HasArg("-shotpolish")) { StartCoroutine(ShotPolish()); return; }
         if (HasArg("-screenshots") && HasArg("-shotgameover")) StartCoroutine(ShotGameOverMenu());
         else if (HasArg("-screenshots") && HasArg("-openskins")) StartCoroutine(ShotSkins());
@@ -257,6 +259,114 @@ public class SnakeAutoplay : MonoBehaviour
     {
         var s = SkinCatalog.Current();
         return s != null && !string.IsNullOrEmpty(s.customHeadId);
+    }
+
+    IEnumerator ShotMixamo()
+    {
+        Directory.CreateDirectory(shotDir);
+        yield return new WaitForSeconds(0.5f);
+        for (int style = 0; style < CrawlStyle.Count; style++)
+        {
+            CrawlStyle.Current = style;
+            yield return ShotStyleSkin("delta", style);
+            yield return ShotStyleSkin("miku", style);
+        }
+        Application.Quit();
+    }
+
+    IEnumerator ShotStyleSkin(string id, int style)
+    {
+        var skin = SkinCatalog.Get(id);
+        if (skin != null) SkinCatalog.Unlock(skin);
+        SkinCatalog.Select(id);
+        if (gm && !gm.IsPlaying) gm.BeginPlay();
+        if (snake)
+        {
+            snake.ResetSnake();
+            snake.ApplySkin(SkinCatalog.Current());
+            foreach (var c in snake.GetComponentsInChildren<DeltaGirlCrawler>(true))
+                if (c) c.ApplyCrawlStyle();
+            snake.Grow(12);
+            snake.Resume();
+        }
+        float step = snake ? snake.stepInterval : 0.16f;
+        yield return new WaitForSeconds(step * 4f + 0.15f);
+        if (snake) snake.SetDirection(Vector2Int.right);
+        yield return new WaitForSeconds(step * 2.2f + 0.15f);
+        if (snake) snake.Stop();
+        var cam = Camera.main;
+        var rig = cam ? cam.GetComponent<CameraRig>() : null;
+        if (cam && snake)
+        {
+            if (rig) rig.enabled = false;
+            yield return null;
+            Transform h = snake.transform;
+            Vector3 fwd = h.forward; fwd.y = 0f;
+            if (fwd.sqrMagnitude < 1e-6f) fwd = Vector3.forward;
+            fwd.Normalize();
+            Vector3 right = Vector3.Cross(Vector3.up, fwd).normalized;
+            cam.transform.position = h.position - fwd * 4.2f + right * 2.8f + Vector3.up * 3.4f;
+            cam.transform.LookAt(h.position + Vector3.up * 0.45f - fwd * 1.2f);
+            yield return new WaitForSecondsRealtime(0.55f);
+            Shot($"style{style}_{id}.png");
+            yield return new WaitForSecondsRealtime(0.2f);
+            if (rig) { rig.enabled = true; rig.SetView(CameraView.Overview); }
+        }
+    }
+
+    IEnumerator ShotV10()
+    {
+        Directory.CreateDirectory(shotDir);
+        yield return new WaitForSeconds(0.6f);
+        yield return ShotV10Skin("miku");
+        yield return ShotV10Skin("delta");
+        Application.Quit();
+    }
+
+    IEnumerator ShotV10Skin(string id)
+    {
+        var skin = SkinCatalog.Get(id);
+        if (skin != null) SkinCatalog.Unlock(skin);
+        SkinCatalog.Select(id);
+        DeltaGirlCrawler.AllFours = false;
+        if (gm && !gm.IsPlaying) gm.BeginPlay();
+        if (snake)
+        {
+            snake.ResetSnake();
+            snake.ApplySkin(SkinCatalog.Current());
+            snake.Grow(14);
+            snake.Resume();
+        }
+        float step = snake ? snake.stepInterval : 0.16f;
+        yield return new WaitForSeconds(step * 5f + 0.2f);
+        if (snake) snake.SetDirection(Vector2Int.right);
+        yield return new WaitForSeconds(step * 2.2f + 0.2f);
+        if (snake) snake.Stop();
+
+        var cam = Camera.main;
+        var rig = cam ? cam.GetComponent<CameraRig>() : null;
+        if (cam && snake)
+        {
+            if (rig) rig.enabled = false;
+            yield return null;
+            Transform h = snake.transform;
+            Vector3 fwd = h.forward; fwd.y = 0f;
+            if (fwd.sqrMagnitude < 1e-6f) fwd = Vector3.forward;
+            fwd.Normalize();
+            Vector3 right = Vector3.Cross(Vector3.up, fwd).normalized;
+            // mírně z boku, ať je v záběru zatáčka vlasů/ocasu
+            cam.transform.position = h.position - fwd * 4.2f + right * 2.8f + Vector3.up * 3.4f;
+            cam.transform.LookAt(h.position + Vector3.up * 0.45f - fwd * 1.2f);
+            yield return new WaitForSecondsRealtime(0.6f);
+            Shot(id + "_third.png");
+            yield return new WaitForSecondsRealtime(0.25f);
+            cam.transform.position = h.position + fwd * 3.0f + right * 2.2f + Vector3.up * 1.35f;
+            cam.transform.LookAt(h.position + Vector3.up * 0.32f - fwd * 0.4f);
+            yield return new WaitForSecondsRealtime(0.5f);
+            Shot(id + "_closeup.png");
+            yield return new WaitForSecondsRealtime(0.15f);
+            if (rig) { rig.enabled = true; rig.SetView(CameraView.Overview); }
+        }
     }
 
     IEnumerator ShotPolish()

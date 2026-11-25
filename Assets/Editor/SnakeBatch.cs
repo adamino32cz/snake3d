@@ -21,6 +21,7 @@ public static class SnakeBatch
     // 2b) Scéna + Linux build v jednom spuštění editoru (šetří čas).
     public static void BuildSceneAndLinux()
     {
+        MixamoSetup.Ensure();
         SnakeSceneSetup.BuildScene();
         BuildLinux();
     }
@@ -28,6 +29,7 @@ public static class SnakeBatch
     // 2c) Scéna + WebGL build v jednom spuštění editoru.
     public static void BuildSceneAndWebGL()
     {
+        MixamoSetup.Ensure();
         SnakeSceneSetup.BuildScene();
         BuildWebGL();
     }
@@ -35,12 +37,19 @@ public static class SnakeBatch
     // 2d) Scéna + Linux + WebGL v jednom spuštění (šetří cykly).
     public static void BuildSceneLinuxAndWebGL()
     {
+        MixamoSetup.Ensure();
         SnakeSceneSetup.BuildScene();
         BuildLinux();
         BuildWebGL();
     }
 
     // 3) Sestaví hru pro Linux do složky Build/Linux.
+    public static void SetupMixamoAndLinux()
+    {
+        MixamoSetup.Ensure();
+        BuildLinux();
+    }
+
     public static void BuildLinux()
     {
         PlayerSettings.runInBackground = true; // hra běží i bez fokusu okna

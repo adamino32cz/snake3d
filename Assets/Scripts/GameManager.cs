@@ -47,6 +47,7 @@ public class GameManager : MonoBehaviour
 
     [Header("Skiny")]
     public GameObject skinsPanel;      // menu výběru vzhledu hada
+    public Button crawlStyleButton;    // tlačítko POHYB na úvodní obrazovce (cyklus stylů)
     public Button skinsButton;         // tlačítko SKINY na úvodní obrazovce
     public Button skinsBackButton;
     public Button skinsCodeButton;     // potvrzení tajného kódu
@@ -96,6 +97,11 @@ public class GameManager : MonoBehaviour
         var args = CmdArgs.Get();
         SkinCatalog.LoadFromPrefsAndArgs(args);
         if (skinsButton) skinsButton.onClick.AddListener(OpenSkinMenu);
+        if (crawlStyleButton) crawlStyleButton.onClick.AddListener(() => CycleCrawlStyle());
+        RefreshCrawlStyleButton();
+        int cs = System.Array.IndexOf(args, "-crawlstyle");
+        if (cs >= 0 && cs + 1 < args.Length && int.TryParse(args[cs + 1], out int csv))
+            CrawlStyle.Current = csv;
         if (skinsBackButton) skinsBackButton.onClick.AddListener(CloseSkinMenu);
         if (skinsCodeButton) skinsCodeButton.onClick.AddListener(() => { SubmitSkinCode(); });
         int a = System.Array.IndexOf(args, "-startlevel");
@@ -385,15 +391,42 @@ public class GameManager : MonoBehaviour
         if (hintText) { hintText.text = ""; hintText.alpha = 1f; }
     }
 
-    void ToggleCrawlStyle()
+    public void CycleCrawlStyle()
     {
-        bool fours = DeltaGirlCrawler.ToggleAllFours();
+        int next = CrawlStyle.Cycle();
+        ApplyCrawlStyleToCharacters();
+        ShowCrawlStyleHint(next);
+        RefreshCrawlStyleButton();
+    }
+
+    void ToggleCrawlStyle() => CycleCrawlStyle();
+
+    void ApplyCrawlStyleToCharacters()
+    {
+        if (!snake) return;
+        foreach (var c in snake.GetComponentsInChildren<DeltaGirlCrawler>(true))
+            if (c) c.ApplyCrawlStyle();
+    }
+
+    void ShowCrawlStyleHint(int style)
+    {
         if (!hintText) return;
         hintText.fontSize = 24;
-        hintText.text = fours ? "Pohyb: po čtyřech" : "Pohyb: plazení";
+        string msg = "Pohyb: " + CrawlStyle.DisplayName(style);
+        var crawler = snake ? snake.GetComponentInChildren<DeltaGirlCrawler>(true) : null;
+        if (CrawlStyle.IsMixamo(style) && crawler && !crawler.MixamoReady)
+            msg += " (u této postavy nejde, zůstává procedurální)";
+        hintText.text = msg;
         hintText.alpha = 1f;
         StopCoroutine(nameof(FadeCamHint));
         StartCoroutine(FadeCamHint());
+    }
+
+    void RefreshCrawlStyleButton()
+    {
+        if (!crawlStyleButton) return;
+        var t = crawlStyleButton.GetComponentInChildren<TMPro.TMP_Text>();
+        if (t) t.text = "POHYB\n<size=60%>" + CrawlStyle.DisplayNameCurrent + "</size>";
     }
 
     // Krátká nápověda při první hře: 3 tipy po sobě, každý 3 s.
@@ -404,7 +437,7 @@ public class GameManager : MonoBehaviour
             "<color=#80FFFF>Šipky / WASD</color> = zatáčení. Sbírej jídlo a rosteš!",
             "Nenarážej do <color=#FF6080>zdí</color>, do <color=#FF9040>pil</color> ani do sebe.",
             "<color=#80FFFF>C</color> = kamera (přehled / 3. osoba / 1. osoba). V 3. a 1. osobě vlevo/vpravo zatáčí podle hada.",
-            "<color=#80FFFF>V</color> = plazení / po čtyřech.",
+            "<color=#80FFFF>V</color> = styl pohybu (plazení, po čtyřech, Mixamo).",
             "Barevná jídla dávají vylepšení. <color=#FFE14D>Esc</color> = pauza.",
         };
         foreach (var tip in tips)
@@ -526,6 +559,7 @@ public class GameManager : MonoBehaviour
     // V pauze: R = znovu, Q = úvodní obrazovka, šipky = hlasitost
     void PauseMenuInput()
     {
+        if (Input.GetKeyDown(KeyCode.V)) { CycleCrawlStyle(); return; }
         if (Input.GetKeyDown(KeyCode.R)) { RestartGame(); return; }
         if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.M)) { ReturnToMenu(); return; }
         if (!sound) return;
@@ -543,7 +577,8 @@ public class GameManager : MonoBehaviour
         if (!pauseText) return;
         string mv = sound ? Bar(sound.musicVolume) : "-", ev = sound ? Bar(sound.effectsVolume) : "-";
         pauseText.text = $"Hudba  {mv}   <size=70%>(šipky vlevo/vpravo)</size>\n" +
-                         $"Zvuky  {ev}   <size=70%>(šipky nahoru/dolů)</size>\n\n" +
+                         $"Zvuky  {ev}   <size=70%>(šipky nahoru/dolů)</size>\n" +
+                         $"Pohyb: {CrawlStyle.DisplayNameCurrent}   <size=70%>(V = další styl)</size>\n\n" +
                          "<size=80%>Esc = pokračovat    R = znovu    M / Q = menu</size>";
     }
 

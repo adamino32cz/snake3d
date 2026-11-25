@@ -1,20 +1,28 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Tělo hada u MIKU: dva blízké, zploštělé tyrkysové prameny (twintaily),
-// které z nadhledu i zezadu čtou jako jeden hustý vlasový ocas.
+// Tělo hada u MIKU: spousta tenkých tyrkysových pramenů po hladké Catmull-Rom křivce.
 public class MikuHairTails : MonoBehaviour
 {
-    SnakeTailTube left;
-    SnakeTailTube right;
-    readonly List<Vector3> pts = new List<Vector3>(80);
-    readonly List<float> rads = new List<float>(80);
-    readonly List<Vector3> smooth = new List<Vector3>(80);
+    const int StrandCount = 18;
+    const int PerSeg = 10;
+
+    Mesh mesh;
+    MeshFilter mf;
+    MeshRenderer mr;
+    Material mat;
+    static Texture2D strandTex;
+
+    readonly List<Vector3> controls = new List<Vector3>(64);
+    readonly List<Vector3> spline = new List<Vector3>(256);
+    readonly List<Vector3> verts = new List<Vector3>(2048);
+    readonly List<Vector3> norms = new List<Vector3>(2048);
+    readonly List<Vector2> uvs = new List<Vector2>(2048);
+    readonly List<int> tris = new List<int>(4096);
 
     public void Hide()
     {
-        if (left) left.Hide();
-        if (right) right.Hide();
+        if (mr) mr.enabled = false;
     }
 
     public void Rebuild(IList<Vector3> path, Transform head, Vector3 move)
@@ -30,91 +38,147 @@ public class MikuHairTails : MonoBehaviour
         fwd.y = 0f;
         if (fwd.sqrMagnitude < 1e-6f) fwd = Vector3.forward;
         fwd.Normalize();
-        Vector3 rightDir = Vector3.Cross(Vector3.up, fwd);
-        if (rightDir.sqrMagnitude < 1e-6f) rightDir = Vector3.right;
-        rightDir.Normalize();
 
-        // kořeny vzadu na hlavě, blízko u sebe (ne dva oddělené sloupy)
-        Vector3 origin = head ? head.position : path[0] + Vector3.up * 0.45f;
-        Vector3 rootL = origin - rightDir * 0.055f + Vector3.up * 0.04f - fwd * 0.08f;
-        Vector3 rootR = origin + rightDir * 0.055f + Vector3.up * 0.04f - fwd * 0.08f;
+        Vector3 origin = head ? head.position : path[0] + Vector3.up * 0.4f;
+        Vector3 root = origin - fwd * 0.08f + Vector3.up * 0.05f;
 
-        SmoothPath(path);
-        BuildStrand(left, rootL, -1f, fwd);
-        BuildStrand(right, rootR, 1f, fwd);
-    }
-
-    void SmoothPath(IList<Vector3> path)
-    {
-        smooth.Clear();
-        int n = path.Count;
-        for (int i = 0; i < n; i++)
+        controls.Clear();
+        controls.Add(root);
+        for (int i = 0; i < path.Count; i++)
         {
             Vector3 p = path[i];
-            if (i > 0 && i < n - 1)
-                p = (path[i - 1] + path[i] * 2f + path[i + 1]) * 0.25f;
-            smooth.Add(p);
+            float t = path.Count > 1 ? i / (float)(path.Count - 1) : 0f;
+            p.y += Mathf.Lerp(0.16f, 0.08f, t);
+            controls.Add(p);
         }
+        PathSpline.CatmullRom(controls, spline, PerSeg);
+        if (spline.Count < 2) { Hide(); return; }
+
+        BuildStrands();
+        if (mr) mr.enabled = true;
     }
 
-    void BuildStrand(SnakeTailTube tube, Vector3 root, float side, Vector3 fwd)
+    void BuildStrands()
     {
-        pts.Clear();
-        rads.Clear();
-        pts.Add(root);
-        rads.Add(0.20f);
-
-        int n = smooth.Count;
+        verts.Clear(); norms.Clear(); uvs.Clear(); tris.Clear();
+        int n = spline.Count;
         float time = Time.time;
-        for (int i = 0; i < n; i++)
-        {
-            float t = n > 1 ? i / (float)(n - 1) : 0f;
-            Vector3 along;
-            if (i + 1 < n) along = smooth[i + 1] - smooth[i];
-            else if (i > 0) along = smooth[i] - smooth[i - 1];
-            else along = -fwd;
-            along.y = 0f;
-            if (along.sqrMagnitude < 1e-6f) along = -fwd;
-            along.Normalize();
-            Vector3 sideV = Vector3.Cross(Vector3.up, along);
-            if (sideV.sqrMagnitude < 1e-6f) sideV = Vector3.right;
-            sideV.Normalize();
 
-            // jemné S: dlouhá vlna + menší kmit, sílí ke špičce
-            float sCurve = Mathf.Sin(t * Mathf.PI * 1.35f + time * 0.7f) * (0.22f * Mathf.SmoothStep(0.05f, 1f, t));
-            float micro = Mathf.Sin(t * Mathf.PI * 3.4f + time * 1.45f + side * 0.5f) * (0.04f * t);
-            // prameny skoro u sebe, ať z dálky splývají v jedno tělo
-            float spread = Mathf.Lerp(0.035f, 0.055f, t);
-            float lift = Mathf.Lerp(0.18f, 0.09f, t * t * 0.35f + t * 0.65f);
-            Vector3 p = smooth[i] + sideV * (side * spread + sCurve + micro) + Vector3.up * lift;
-            // plynulý přechod z kořene hlavy do cesty článků
-            if (i == 0) p = Vector3.Lerp(root, p, 0.55f);
-            pts.Add(p);
-            // tlustší u hlavy, měkká zužující se špička
-            rads.Add(Mathf.Lerp(0.19f, 0.045f, t * t * 0.35f + t * 0.65f));
+        for (int s = 0; s < StrandCount; s++)
+        {
+            // dvě skupiny (twintaily), prameny v malé elipse – objem, ne plošná stužka
+            bool left = s < StrandCount / 2;
+            int idx = s % (StrandCount / 2);
+            int bunchN = StrandCount / 2;
+            float ang = (idx / (float)Mathf.Max(1, bunchN)) * Mathf.PI * 2f + (left ? 0.2f : 1.1f);
+            float side0 = (left ? -0.07f : 0.07f) + Mathf.Cos(ang) * 0.055f;
+            float lift0 = 0.05f + Mathf.Sin(ang) * 0.048f;
+            float phase = s * 0.73f;
+            float width0 = 0.026f + (s % 3) * 0.005f;
+
+            int v0 = verts.Count;
+            for (int i = 0; i < n; i++)
+            {
+                float t = n > 1 ? i / (float)(n - 1) : 0f;
+                Vector3 tan = (i + 1 < n ? spline[i + 1] - spline[i] : spline[i] - spline[i - 1]);
+                if (tan.sqrMagnitude < 1e-10f) tan = Vector3.forward;
+                tan.Normalize();
+                Vector3 side = Vector3.Cross(Vector3.up, tan);
+                if (side.sqrMagnitude < 1e-10f) side = Vector3.right;
+                side.Normalize();
+                Vector3 up = Vector3.Cross(tan, side).normalized;
+
+                float sway = Mathf.Sin(t * Mathf.PI * 1.4f + time * 0.8f + phase) * (0.05f * t);
+                float micro = Mathf.Sin(t * Mathf.PI * 4f + time * 1.6f + phase * 1.7f) * (0.018f * t);
+                float spread = Mathf.Lerp(0.75f, 1.2f, t);
+                float lift = lift0 * Mathf.Lerp(1f, 0.7f, t) + Mathf.Sin(t * Mathf.PI * 2.2f + phase) * 0.03f * t;
+                Vector3 p = spline[i] + side * (side0 * spread + sway + micro) + up * lift;
+
+                float w = width0 * Mathf.Lerp(1f, 0.18f, t * t * 0.4f + t * 0.6f);
+                verts.Add(p - side * w);
+                verts.Add(p + side * w);
+                norms.Add(up);
+                norms.Add(up);
+                uvs.Add(new Vector2(0f, t));
+                uvs.Add(new Vector2(1f, t));
+            }
+
+            // oboustranné pruhy
+            for (int i = 0; i < n - 1; i++)
+            {
+                int a = v0 + i * 2, b = a + 1, c = a + 2, d = a + 3;
+                tris.Add(a); tris.Add(c); tris.Add(b);
+                tris.Add(b); tris.Add(c); tris.Add(d);
+                tris.Add(a); tris.Add(b); tris.Add(c);
+                tris.Add(b); tris.Add(d); tris.Add(c);
+            }
         }
 
-        Color emit = new Color(0.40f, 0.98f, 0.92f);
-        tube.Rebuild(pts, rads, null, emit, true, true, true);
+        mesh.Clear();
+        mesh.SetVertices(verts);
+        mesh.SetNormals(norms);
+        mesh.SetUVs(0, uvs);
+        mesh.SetTriangles(tris, 0, false);
+        mesh.RecalculateBounds();
+        mesh.RecalculateNormals();
     }
 
     void Ensure()
     {
-        if (left && right) return;
-        if (!left) left = Make("HairL");
-        if (!right) right = Make("HairR");
+        if (!mf)
+        {
+            mf = gameObject.AddComponent<MeshFilter>();
+            mr = gameObject.AddComponent<MeshRenderer>();
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+            mesh = new Mesh { name = "MikuHairStrands" };
+            mesh.MarkDynamic();
+            mf.sharedMesh = mesh;
+        }
+        if (!mat)
+        {
+            Shader sh = Shader.Find("Universal Render Pipeline/Unlit")
+                     ?? Shader.Find("Universal Render Pipeline/Lit")
+                     ?? Shader.Find("Sprites/Default");
+            mat = new Material(sh);
+            mat.SetFloat("_AlphaClip", 1f);
+            mat.EnableKeyword("_ALPHATEST_ON");
+            mat.SetFloat("_Cutoff", 0.25f);
+            mat.SetColor("_BaseColor", new Color(0.28f, 0.90f, 0.85f, 1f));
+            mat.SetColor("_Color", new Color(0.28f, 0.90f, 0.85f, 1f));
+            var tex = StrandTex();
+            mat.SetTexture("_BaseMap", tex);
+            mat.SetTexture("_MainTex", tex);
+            mr.sharedMaterial = mat;
+        }
+        transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
     }
 
-    SnakeTailTube Make(string name)
+    static Texture2D StrandTex()
     {
-        var go = new GameObject(name);
-        go.transform.SetParent(transform, false);
-        go.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-        var tube = go.AddComponent<SnakeTailTube>();
-        tube.flattenX = 1.35f;
-        tube.flattenY = 0.78f;
-        tube.extra = 4;
-        tube.sides = 14;
-        return tube;
+        if (strandTex) return strandTex;
+        const int w = 32, h = 128;
+        var t = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        t.wrapMode = TextureWrapMode.Clamp;
+        t.filterMode = FilterMode.Bilinear;
+        for (int y = 0; y < h; y++)
+        for (int x = 0; x < w; x++)
+        {
+            float u = x / (w - 1f);
+            float v = y / (h - 1f);
+            float ridge = 1f - Mathf.Abs(u - 0.5f) * 2f;
+            ridge = Mathf.Pow(Mathf.Clamp01(ridge), 1.15f);
+            float alpha = Mathf.SmoothStep(0f, 1f, ridge);
+            if (v > 0.82f) alpha *= 1f - (v - 0.82f) / 0.18f;
+            Color dark = new Color(0.08f, 0.36f, 0.38f, alpha);
+            Color mid = new Color(0.25f, 0.85f, 0.80f, alpha);
+            Color hi = new Color(0.72f, 1f, 0.96f, alpha);
+            Color c = Color.Lerp(dark, mid, 0.45f + 0.4f * ridge);
+            c = Color.Lerp(c, hi, Mathf.Pow(ridge, 2.2f) * 0.55f);
+            t.SetPixel(x, y, c);
+        }
+        t.Apply(false, true);
+        strandTex = t;
+        return t;
     }
 }

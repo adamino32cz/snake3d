@@ -573,7 +573,7 @@ public static class SnakeSceneSetup
         press.rectTransform.sizeDelta = new Vector2(1400, 90); press.text = "stiskni MEZERNÍK";
         var help = Text(title.transform, "Help", new Vector2(0.5f, 0.5f), new Vector2(0, -255), TextAlignmentOptions.Center, 26, fontCyan);
         help.rectTransform.sizeDelta = new Vector2(1900, 90);
-        help.text = "Šipky / WASD = řízení    C = kamera (přehled / 3. osoba / 1. osoba)    V = plazení / po čtyřech    K = skiny";
+        help.text = "Šipky / WASD = řízení    C = kamera    V = styl pohybu    K = skiny    POHYB = výběr Mixamo / plazení";
         // legenda jídla: vlastní materiál bez záře, jinak by barvy vybledly do bíla
         var legend = Text(title.transform, "FoodLegend", new Vector2(0.5f, 0.5f), new Vector2(0, -315), TextAlignmentOptions.Center, 36, fontPlain);
         legend.rectTransform.sizeDelta = new Vector2(1700, 60);
@@ -583,7 +583,10 @@ public static class SnakeSceneSetup
         gm.levelSelectText = lvlSel;
         gm.titlePanel = title; gm.pressStartText = press;
 
-        // Tlačítko SKINY vpravo dole na úvodní obrazovce
+        // Tlačítko POHYB a SKINY vpravo dole na úvodní obrazovce
+        var btnCrawl = UiButton(title.transform, "CrawlStyleButton", new Vector2(1, 0), new Vector2(-455, 70), new Vector2(300, 86), "POHYB", fontCyan,
+                                new Color(0.02f, 0.15f, 0.2f), Cyan);
+        gm.crawlStyleButton = btnCrawl.GetComponent<Button>();
         var btnSkins = UiButton(title.transform, "SkinsButton", new Vector2(1, 0), new Vector2(-160, 70), new Vector2(260, 86), "SKINY", fontCyan,
                                 new Color(0.02f, 0.15f, 0.2f), Cyan);
         gm.skinsButton = btnSkins.GetComponent<Button>();

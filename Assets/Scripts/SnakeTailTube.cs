@@ -5,7 +5,7 @@ using UnityEngine;
 public class SnakeTailTube : MonoBehaviour
 {
     public int sides = 16;
-    public int extra = 3; // mezibody mezi články
+    public int extra = 5; // hustota Catmull-Rom vzorků (perSeg = extra*2)
     public float flattenX = 1f; // šířka průřezu (1 = kruh, >1 = stuhová)
     public float flattenY = 1f; // výška průřezu (<1 = zploštělé vlasy)
     const int CapRings = 5;
@@ -50,21 +50,8 @@ public class SnakeTailTube : MonoBehaviour
         if (mr) mr.enabled = true;
 
         pts.Clear(); rads.Clear();
-        for (int i = 0; i < srcPts.Count; i++)
-        {
-            pts.Add(srcPts[i]);
-            rads.Add(srcRads[i]);
-            if (i >= srcPts.Count - 1 || extra <= 0) continue;
-            Vector3 a = srcPts[i], b = srcPts[i + 1];
-            float ra = srcRads[i], rb = srcRads[i + 1];
-            for (int k = 1; k <= extra; k++)
-            {
-                float t = k / (extra + 1f);
-                float s = t * t * (3f - 2f * t);
-                pts.Add(Vector3.Lerp(a, b, s));
-                rads.Add(Mathf.Lerp(ra, rb, s));
-            }
-        }
+        int per = Mathf.Max(4, extra * 2);
+        PathSpline.CatmullRom(srcPts, srcRads, pts, rads, per);
 
         // zaoblená, zúžená špička
         if (pts.Count >= 2)
@@ -109,10 +96,10 @@ public class SnakeTailTube : MonoBehaviour
                 }
                 else
                 {
-                    Color rim = miku ? new Color(0.22f, 0.95f, 0.88f) : new Color(0.72f, 0.38f, 1.05f);
-                    Color dark = miku ? new Color(0.05f, 0.06f, 0.07f) : new Color(0.055f, 0.03f, 0.08f);
+                    Color rim = miku ? new Color(0.22f, 0.95f, 0.88f) : new Color(1.25f, 0.70f, 1.55f);
+                    Color dark = miku ? new Color(0.05f, 0.06f, 0.07f) : new Color(0.62f, 0.32f, 0.85f);
                     block.SetColor("_BaseColor", dark);
-                    block.SetColor("_EmissionColor", rim * 0.85f);
+                    block.SetColor("_EmissionColor", rim * 1.15f);
                     block.SetTexture("_BaseMap", miku ? FurTex(true) : FurTex(false));
                     block.SetTexture("_EmissionMap", miku ? EmitTex(true) : EmitTex(false));
                 }
@@ -219,8 +206,8 @@ public class SnakeTailTube : MonoBehaviour
         tex.wrapModeU = TextureWrapMode.Repeat;
         tex.wrapModeV = TextureWrapMode.Clamp;
         tex.filterMode = FilterMode.Bilinear;
-        Color rim = miku ? new Color(0.28f, 1f, 0.92f) : new Color(0.75f, 0.4f, 1.1f);
-        Color dark = miku ? new Color(0.04f, 0.05f, 0.055f) : new Color(0.045f, 0.025f, 0.07f);
+        Color rim = miku ? new Color(0.28f, 1f, 0.92f) : new Color(1.05f, 0.62f, 1.40f);
+        Color dark = miku ? new Color(0.04f, 0.05f, 0.055f) : new Color(0.32f, 0.14f, 0.48f);
         for (int y = 0; y < h; y++)
         {
             float v = y / (h - 1f);
