@@ -34,7 +34,14 @@ public class DeltaGirlCrawler : MonoBehaviour
     public bool MixamoReady { get; private set; }
     Animator mixAnim;
     Avatar humanAvatar;
-    const float MixamoYaw = 0f;
+    int appliedMixamoStyle = int.MinValue;
+    // per-style (pitch, yaw, roll) – doladí se podle snímků, ať klip neleží na boku
+    static readonly Vector3[] MixamoEuler =
+    {
+        Vector3.zero, // anim1
+        Vector3.zero, // anim2
+        Vector3.zero  // anim3
+    };
 
     public Transform HeadBone => head;
 
@@ -140,13 +147,28 @@ public class DeltaGirlCrawler : MonoBehaviour
 
     public void ApplyCrawlStyle()
     {
-        bool use = MixamoReady && CrawlStyle.IsMixamoCurrent && mixAnim;
+        bool use = MixamoReady && CrawlStyle.IsMixamoCurrent && mixAnim != null;
         if (!mixAnim) return;
-        mixAnim.enabled = use;
+        int style = CrawlStyle.Current;
         if (use)
         {
-            string st = CrawlStyle.AnimatorState(CrawlStyle.Current);
-            if (!string.IsNullOrEmpty(st)) mixAnim.Play(st, 0, 0f);
+            mixAnim.applyRootMotion = false;
+            mixAnim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            mixAnim.updateMode = AnimatorUpdateMode.Normal;
+            mixAnim.speed = 1f;
+            if (!mixAnim.enabled) mixAnim.enabled = true;
+            // Play jen při změně stylu – každé LateUpdate by klip restartovalo na t=0 (zmrzlá póza).
+            if (appliedMixamoStyle != style)
+            {
+                string st = CrawlStyle.AnimatorState(style);
+                if (!string.IsNullOrEmpty(st)) mixAnim.Play(st, 0, 0f);
+                appliedMixamoStyle = style;
+            }
+        }
+        else
+        {
+            if (mixAnim.enabled) mixAnim.enabled = false;
+            appliedMixamoStyle = int.MinValue;
         }
     }
 
@@ -305,7 +327,10 @@ public class DeltaGirlCrawler : MonoBehaviour
     {
         Vector3 move = MoveDir();
         if (move.sqrMagnitude < 1e-8f) move = Vector3.forward;
-        transform.rotation = Quaternion.LookRotation(move, Vector3.up) * Quaternion.Euler(0f, MixamoYaw, 0f);
+        Vector3 e = Vector3.zero;
+        int idx = CrawlStyle.Current - CrawlStyle.Mixamo1;
+        if (idx >= 0 && idx < MixamoEuler.Length) e = MixamoEuler[idx];
+        transform.rotation = Quaternion.LookRotation(move, Vector3.up) * Quaternion.Euler(e);
         Vector3 head = transform.parent ? transform.parent.position : transform.position;
         Vector3 want = head - move * 0.55f;
         want.y = 0.02f;

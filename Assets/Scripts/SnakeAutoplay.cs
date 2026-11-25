@@ -49,6 +49,7 @@ public class SnakeAutoplay : MonoBehaviour
         if (HasArg("-screenshots") && HasArg("-shotnormal")) { StartCoroutine(ShotNormalSkin()); return; }
         if (HasArg("-screenshots") && HasArg("-shotv10")) { StartCoroutine(ShotV10()); return; }
         if (HasArg("-screenshots") && HasArg("-shotmixamo")) { StartCoroutine(ShotMixamo()); return; }
+        if (HasArg("-screenshots") && HasArg("-shotmotion")) { StartCoroutine(ShotMotion()); return; }
         if (HasArg("-screenshots") && HasArg("-shotpolish")) { StartCoroutine(ShotPolish()); return; }
         if (HasArg("-screenshots") && HasArg("-shotgameover")) StartCoroutine(ShotGameOverMenu());
         else if (HasArg("-screenshots") && HasArg("-openskins")) StartCoroutine(ShotSkins());
@@ -259,6 +260,61 @@ public class SnakeAutoplay : MonoBehaviour
     {
         var s = SkinCatalog.Current();
         return s != null && !string.IsNullOrEmpty(s.customHeadId);
+    }
+
+    IEnumerator ShotMotion()
+    {
+        Directory.CreateDirectory(shotDir);
+        yield return new WaitForSeconds(0.4f);
+        string[] names = { "slither", "allfours", "mixamo1", "mixamo2", "mixamo3" };
+        for (int style = 0; style < CrawlStyle.Count && style < names.Length; style++)
+            yield return ShotMotionStyle("delta", style, names[style]);
+        Application.Quit();
+    }
+
+    IEnumerator ShotMotionStyle(string id, int style, string tag)
+    {
+        CrawlStyle.Current = style;
+        var skin = SkinCatalog.Get(id);
+        if (skin != null) SkinCatalog.Unlock(skin);
+        SkinCatalog.Select(id);
+        if (gm && !gm.IsPlaying) gm.BeginPlay();
+        if (snake)
+        {
+            snake.ResetSnake();
+            snake.ApplySkin(SkinCatalog.Current());
+            foreach (var c in snake.GetComponentsInChildren<DeltaGirlCrawler>(true))
+                if (c) c.ApplyCrawlStyle();
+            snake.Grow(10);
+            snake.Resume();
+        }
+        float step = snake ? snake.stepInterval : 0.16f;
+        yield return new WaitForSeconds(step * 3f + 0.15f);
+        if (snake) snake.SetDirection(Vector2Int.right);
+        yield return new WaitForSeconds(step * 2f + 0.1f);
+        if (snake) snake.Stop();
+        var cam = Camera.main;
+        var rig = cam ? cam.GetComponent<CameraRig>() : null;
+        if (cam && snake)
+        {
+            if (rig) rig.enabled = false;
+            yield return null;
+            Transform h = snake.transform;
+            Vector3 fwd = h.forward; fwd.y = 0f;
+            if (fwd.sqrMagnitude < 1e-6f) fwd = Vector3.forward;
+            fwd.Normalize();
+            Vector3 right = Vector3.Cross(Vector3.up, fwd).normalized;
+            cam.transform.position = h.position - fwd * 4.2f + right * 2.8f + Vector3.up * 3.4f;
+            cam.transform.LookAt(h.position + Vector3.up * 0.45f - fwd * 1.2f);
+            yield return new WaitForSecondsRealtime(0.45f);
+            for (int f = 1; f <= 3; f++)
+            {
+                Shot(tag + "_f" + f + ".png");
+                yield return new WaitForSecondsRealtime(0.12f);
+                if (f < 3) yield return new WaitForSecondsRealtime(0.30f);
+            }
+            if (rig) { rig.enabled = true; rig.SetView(CameraView.Overview); }
+        }
     }
 
     IEnumerator ShotMixamo()

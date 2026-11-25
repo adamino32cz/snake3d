@@ -111,7 +111,11 @@ public class GameManager : MonoBehaviour
         level = startLevel;
         ApplyLevel(level);
         StartGame();
-        if (skipTitle || titlePanel == null) BeginPlay();
+        bool autoStart = skipTitle || titlePanel == null
+            || System.Array.IndexOf(args, "-play") >= 0
+            || System.Array.IndexOf(args, "-autoplay") >= 0
+            || System.Array.IndexOf(args, "-screenshots") >= 0;
+        if (autoStart) BeginPlay();
         else { state = State.Title; snake.Stop(); titlePanel.SetActive(true); if (cameraRig) cameraRig.orbit = true; }
     }
 

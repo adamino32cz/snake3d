@@ -27,9 +27,14 @@ public static class CrawlStyle
     {
         get
         {
+            int v;
             if (PlayerPrefs.HasKey(PrefsKey))
-                return Mathf.Clamp(PlayerPrefs.GetInt(PrefsKey, 0), 0, Count - 1);
-            return PlayerPrefs.GetInt(DeltaGirlCrawler.PrefsAllFours, 0) == 1 ? AllFours : Slither;
+                v = Mathf.Clamp(PlayerPrefs.GetInt(PrefsKey, 0), 0, Count - 1);
+            else
+                v = PlayerPrefs.GetInt(DeltaGirlCrawler.PrefsAllFours, 0) == 1 ? AllFours : Slither;
+            // anim2 (legrace na zádech) je cursed – vypadává z cyklu
+            if (v == Mixamo2) v = Mixamo3;
+            return v;
         }
         set
         {
@@ -42,7 +47,9 @@ public static class CrawlStyle
 
     public static int Cycle()
     {
-        Current = (Current + 1) % Count;
+        int v = Current;
+        do { v = (v + 1) % Count; } while (v == Mixamo2);
+        Current = v;
         return Current;
     }
 
